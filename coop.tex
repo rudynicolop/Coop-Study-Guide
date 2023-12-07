@@ -1,0 +1,1517 @@
+\documentclass{article}
+\usepackage[english]{babel}
+\usepackage{amsthm}
+\usepackage{listings}
+\usepackage{mathpartir}
+\usepackage{amsmath,amssymb}
+\usepackage{stmaryrd}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{color}   %May be necessary if you want to color links
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true, %set true if you want colored links
+    linktoc=all,     %set to all if you want both sections and subsections linked
+    linkcolor=blue,  %choose some color if you want links to stand out
+}
+\usepackage{epigraph}
+
+\usepackage{macros}
+
+\setlength\epigraphwidth{.8\textwidth}
+\setlength\epigraphrule{0pt}
+
+\usepackage[margin=1in,footskip=0.25in]{geometry}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\title{Concepts (Principles) of Object-Oriented Programming \\ Study Guide}
+\author{Johan Liebert}
+\date{\today}
+
+\begin{document}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+
+\newtheorem{example}{Example}[section]
+
+\maketitle
+
+\epigraph{\itshape Object-oriented programming is an exceptionally bad idea which could only have originated in California.}{Edsger Dijkstra}
+
+\tableofcontents
+
+\section{Introduction}
+
+This study guide takes its information from the \href{https://www.pm.inf.ethz.ch/education/courses/COOP.html}{Concepts of Object-Oriented Programming course website}.
+
+Objects have:
+\begin{itemize}
+    \item State
+    \item Location in memory
+    \item Behavior
+\end{itemize}
+
+Core concepts:
+\begin{itemize}
+    \item Object model
+    \item Interfaces and encapsulation
+    \item Classification and Polymorphism
+\end{itemize}
+
+Language concepts:
+\begin{itemize}
+    \item Classes
+    \item Inheritance
+    \item Subtyping
+    \item Dynamic binding
+\end{itemize}
+
+Methods are invoked on a \receiver{} object:
+\begin{example}[\receiver{}s]
+Imagine there is a dog class and a human class. Here the dog instance is the \receiver{}.
+\begin{lstlisting}[language=Java]
+    Dog dog = new Dog();
+    Human human = new Human();
+    dog.peeOn(human);
+\end{lstlisting}
+\end{example}
+\section{Typing}
+
+\subsection{Types}
+
+\epigraph{\itshape Q: Why bother doing proofs about programming languages? They are almost always boring if the definitions are right. \\
+A: The definitions are almost always wrong.}{Benjamin C. Pierce }
+
+\begin{definition}[\nominal{} Types]
+Type equivalence based on the type's name.
+\end{definition}
+
+\begin{definition}[\structural{} Types]
+Type equivalence based on availability of methods and fields.
+\end{definition}
+
+\begin{definition}[\static{} Typing]
+Types are determined at \compiletime{}, may be inferred or declared explicitly.
+\end{definition}
+
+\begin{definition}[\dynamic{} Typing]
+Types are determined at \runtime{}.
+\end{definition}
+
+Sometimes \textit{\runtimecheck{}s} are needed even in so-called ``\static{}" languages.
+
+\begin{example}[Downcasts]
+Downcasts could fail so they need a \runtimecheck{}.
+\begin{lstlisting}[language=Java]
+String foo(Object o){
+    String s = (String) o;
+    return s;
+}
+\end{lstlisting}
+\end{example}
+
+\subsection{Syntactic Subtyping}
+
+\begin{definition}[\subprincip{}]
+    Subtype objects may be used wherever supertype objects are expected.
+\end{definition}
+
+\begin{definition}[\syntactic{} Subtyping]
+Subtype \receiver{}s $S$ understand the messages of supertype \receiver{}s $T$.
+\begin{equation}
+    values(S) \subseteq values(T)
+\end{equation}
+$S$ has a wider interface than $T$.
+\begin{equation}
+    interface(T) \subseteq interface(S)
+\end{equation}
+We then say that $\subtype{S}{T}$.
+\end{definition}
+
+\begin{definition}[\nominal{} Subtyping]
+$\subtype{S}{T}$ when $S$ explicitly declares $T$ as a supertype.
+\end{definition}
+
+\begin{definition}[\structural{} Subtyping]
+$\subtype{S}{T}$ when $S$ has the same available methods and fields as $T$.
+\end{definition}
+
+For $\subtype{S}{T}$, then any field or method in $S$ that \override{}s one in $T$ must have at least the same visibility.
+
+\begin{example}[Java Visibility]
+\begin{equation}
+    \subtype{\public{}}{\subtype{\protects}{\subtype{\default}{\private}}}
+\end{equation}
+\end{example}
+
+\begin{definition}[Function Subtyping]
+Recall from lambda calculi with subtyping that parameter types should be \textit{\contra{}} and that return types should be \textit{\covar{}}:
+\begin{mathpar}
+    \inferrule
+    {\subtype{T_1}{S_1} \\
+    \subtype{S_2}{T_2}}
+    {\subtype{S_1 \rightarrow S_2}{T_1 \rightarrow T_2}}
+\end{mathpar}
+In OO this applies to methods.
+\end{definition}
+
+\begin{example}[Why \contra{} parameters?]
+Consider the following:
+\begin{lstlisting}[language=Java]
+class Animal {}
+
+class Cat <: Animal {
+    public void squish() { ... }
+}
+
+class Human {
+    public void pet(Animal a) {}
+}
+
+class CatLover <: Human {
+    public void pet(Cat c) {
+        c.squish();
+    }
+}
+\end{lstlisting}
+We could have client code:
+\begin{lstlisting}[language=Java]
+void client(Human h) {
+    h.pet(new Animal())
+}
+\end{lstlisting}
+That is called as:
+\begin{lstlisting}[language=Java]
+client(new CatLover());
+\end{lstlisting}
+\end{example}
+This would invoke \texttt{CatLover}'s pet method, which will call \texttt{squish} on an \texttt{Animal}. However we don't know if \texttt{Animal} in general may be squished? This message will not be understood.
+
+In pretty-much all OO languages that anyone cares about return types are \covar{} but parameter types are \invar{} because this would make \textit{overloading} more troublesome.
+
+\begin{definition}[Reference Subtyping]
+Recall from lambda calculi with subtyping that mutable reference types must be \invar{}:
+\begin{mathpar}
+\inferrule
+{\subtype{S}{T} \\
+\subtype{T}{S}}
+{\subtype{\mutref{S}}{\mutref{T}}}
+\end{mathpar}
+In OO this applies to class's mutable fields.
+\end{definition}
+
+\begin{example}[Why \invar{} fields?]
+We can think of a mutable field has having a \texttt{read} and a \texttt{write} method.
+\begin{lstlisting}[language=Java]
+class Super {
+    T field;
+
+    T read() {
+        return this.field;
+    }
+
+    void write(T t) {
+        this.field = t;
+    }
+}
+
+class Sub <: Super {
+    S field;
+
+    S read() {
+        return this.field;
+    }
+
+    void write(S s) {
+        this.field;
+    }
+}
+\end{lstlisting}
+From doing function subtyping on \texttt{read} we get that $\subtype{S}{T}$. From doing function subtyping on \texttt{write} we get that $\subtype{T}{S}$.
+\end{example}
+
+Arrays in java are \covar{} because Java is stupid. So \textit{writes} to arrays require a \runtimecheck{}.
+
+\begin{example}[\covar{} arrays in Java]
+Consider the following:
+\begin{lstlisting}[language=Java, numbers=left]
+String[] strs = {"hello", "world"};
+Object[] objs = strs;
+for (Object obj : objs) {
+    System.out.println(obj);
+}
+System.out.println()
+objs[0] = new Object();
+\end{lstlisting}
+This fails at line 7. There is a \runtimecheck{} that throws a \\ \texttt{java.lang.ArrayStoreException} for array writes.
+\end{example}
+
+\begin{example}[\contra{} arrays?]
+What if Java had \contra{} arrays? Consider:
+\begin{lstlisting}[language=Java, numbers=left]
+Object[] objs = [new Object(), new Object()];
+String strs = objs;
+strs[0] = "hello";
+for (String str : strs) {
+    System.out.println("bro" + str);
+}
+\end{lstlisting}
+Here this would require a \runtimecheck{} at line 5 when we read from the array.
+\end{example}
+
+In general we want \covar{} for reads, or types in \textit{positive} positions whereas we want \contra{} for writes or types in \textit{negative} positions.
+If what should be an \invar{} relation is treated as \covar{}, then we need a \runtimecheck{} for \textit{writes}.
+If what should be an \invar{} relation is treated a \contra{}, then we need a \runtimecheck{} for \textit{reads}.
+
+\subsection{Behavioral Subtyping}
+
+\begin{definition}[Semantic Classification of Subtyping]
+\begin{equation}
+    \subtype{S}{T} \rightarrow behaviors(T) \subseteq behaviors(S)
+\end{equation} 
+\end{definition}
+
+We would like to constrain how overriding method's pre- and postconditions may be logically related.
+
+\begin{definition}[Overriding Preconditions]
+Overriding methods may \textit{weaken} preconditions.
+\begin{equation}
+\subtype{S}{T} \rightarrow \forall ~ S_m ~ \override{} ~ T_m \rightarrow \pre{T_m} \rightarrow \pre{S_m}
+\end{equation}
+\end{definition}
+
+\begin{definition}[Overrding Postconditions]
+Overriding methods may \\ \textit{strengthen} postconditions.
+\begin{equation}
+\subtype{S}{T} \rightarrow \forall ~ S_m ~ \override{} ~ T_m \rightarrow \post{S_m} \rightarrow \post{T_m}
+\end{equation}
+We may allow a stronger result:
+\begin{equation}
+\subtype{S}{T} \rightarrow \forall ~ S_m ~ \override{} ~ T_m \rightarrow \old{\pre{T_m}} \rightarrow \post{S_m} \rightarrow \post{T_m}
+\end{equation}
+\end{definition}
+
+These rules for pre- and postconditions are reminiscent of the \textit{rule of consequence} from Hoare Logic:
+\begin{mathpar}
+\inferrule
+{P \rightarrow P' \\
+\triple{P'}{c}{Q'} \\
+Q' \rightarrow Q}
+{\triple{P}{c}{Q}}
+\end{mathpar}
+We may think of $P$ as the precondition of the supertype, $Q$ as the postcondition of the supertype, $P'$ as the precondition of the subtype, and $Q'$ as the postcondition of the subtype.
+
+\begin{definition}[Overriding Invariants]
+Subtypes may have stronger class invariants for fields:
+\begin{equation}
+\subtype{S}{T} \rightarrow \inv{S} \rightarrow \inv{T}
+\end{equation}
+\end{definition}
+
+\begin{definition}[History Constraints]
+Properties of class fields that describe how objects evolve over time.
+Such a relation on a class's field must be \textit{reflexive} and \textit{transitive}.
+\begin{equation}
+\constraint{T_f} := \old{T_f} \sqsubseteq T_f 
+\end{equation}
+where $\sqsubseteq$ is reflexive and transitive.
+Relations in history constraints may be represented as pure boolean functions.
+\end{definition}
+
+\begin{example}[History Constraint]
+Consider a stopwatch class that has the time.
+\begin{lstlisting}
+class Stopwatch {
+    // constraint: old(time) <= time
+    int time;
+
+    void tick() {
+        this.time++;
+    }
+}
+\end{lstlisting}
+\end{example}
+
+\begin{definition}[Overriding History Constraints]
+Subtypes may \textit{strengthen} history constraints for fields.
+\begin{equation}
+\subtype{S}{T} \rightarrow \forall ~ S_f ~ \override{} ~ T_f \rightarrow \constraint{S_f} \rightarrow \constraint{T_f}
+\end{equation}
+\end{definition}
+
+\section{Inheritance}
+
+\epigraph{\itshape Inheritance is not a core
+concept [of OOP].}{Peter M\"uller}
+
+\epigraph{\itshape Specifically, programming without inheritance is distinctly not object-oriented; that would merely be programming with abstract data types.}{Grady Booch}
+
+Subtyping expresses \textit{classification}, whereas inheritance is a means of \textit{code reuse}. \textit{Subclassing} is both subtyping and inheritance. In inheritance there is only 1 super object at \runtime{} The sub object \textit{is} an instance of the super object. In aggregation an object \textit{has} another object as a field, and delegates to that object. It's possible to simulate subclassing with subtyping and delegation.
+
+\begin{example}[Immutabe and Mutable Types]
+Consider the following java code for an immutable cell:
+\begin{lstlisting}[language=Java]
+class ImmutableCell {
+
+    // constraint: old(val) = val
+    private int val;
+    
+    public ImmutableCell (int val) {
+        this.val = val;
+    }
+
+    public int get () {
+        return this.val;
+    }
+}
+\end{lstlisting}
+We could want to write a mutable cell. How should it be related to \\ \texttt{ImmutableCell}?
+Ideally a \texttt{MutableCell} could inherit all of \texttt{ImmutableCell}'s functionality and add a setter:
+\begin{lstlisting}[language=Java]
+class MutableCell extends ImmutableCell {
+
+    public MutableCell (int val) {
+        super(val);
+    }
+
+    public void set (int val) {
+        this.val = val;
+    }
+}
+\end{lstlisting}
+However \texttt{MutableCell} breaks the history constraint on \texttt{val}, so it cannot be a \behavioral{} subtype! In Java it would be best to use aggregation:
+\begin{lstlisting}[language=Java]
+class MutableCell {
+    ImmutableCell cell;
+
+    public MutableCell (int val) {
+        this.cell = new ImmutableCell(val);
+    }
+
+    public int get () {
+        this.cell.get();
+    }
+
+    public void set (int val) {
+        this.cell = new ImmutableCell(val);
+    }
+}
+\end{lstlisting}
+Admittedly this is stupid: it could just have an \texttt{int} field and do away with the overhead of storing another object.
+\end{example}
+
+\begin{example}[Private Inheritance]
+In C++ it's possible for a class to inherit \textit{privately} from another class. This achieves code reuse without introducing a subtyping relation. Now we can implement the immutable and mutable cell example as we wanted to before.
+\begin{lstlisting}[language=C++]
+class ImmutableCell {
+    private:
+        // constraint: old(val) = val
+        int val;
+
+    public:
+        ImmutableCell (int v) {
+            val = v;
+        }
+
+        int get () {
+            return val;
+        }
+};
+
+class MutableCell : private ImmutableCell {
+    public:
+        MutableCell (int v) : ImmutableCell(v) {}
+
+        ImmutableCell::get
+
+        void set (int v) {
+            val = v;
+        }
+}
+\end{lstlisting}
+\end{example}
+
+\subsection{Dynamic Method Binding}
+
+\epigraph{\itshape The object-oriented model makes it easy to build up programs by accretion. What this often means, in practice, is that it provides a structured way to write spaghetti code.}{Paul Graham}
+
+\begin{definition}[Static binding]
+At \compiletime{} a method is selected based on the \textit{\static{}} type of the \receiver{}'s \textit{\syntactic{}} expression.
+\end{definition}
+
+\begin{definition}[Dynamic binding]
+At \runtime{} a method is selected based on the \textit{\dynamic{}} type of the \receiver{} object's \textit{value}.
+\end{definition}
+
+Java and Scala have \dynamic{} binding by default, whereas C++ and C\# have \static{} binding by default.
+
+\begin{definition}[Two-step Method]
+\label{twostep}
+Given a method call on some \receiver{},
+ to determine what method will be called given an OO program do:
+\begin{enumerate}
+\item Find the best-matching method based on the \textit{\static{}} type of the \receiver{} and arguments.
+\item Based on the \textit{\dynamic{}} type of \receiver{} see if this method is overriden.
+\end{enumerate}
+This is different in each language. In Java for step 1 any method in the \static{} class and any of its superclass's are equally valid options. In C++ and C\# it starts at the \static{} and goes up the class hierarchy until a suitable method is found.
+This is each languages \textit{overloading resolution}.
+\end{definition}
+
+\begin{definition}[Fragile Base-class Scenario]
+\label{fragile}
+In general any potentially overriden methods may cause problems. A subclass's behavior may be affected by changes to the superclass, and the way a subclass overrides a superclass may break the superclass's behavior. In particular:
+\begin{itemize}
+\item A superclass shoud not change calls to \dynamic{}ally bound methods.
+\item subclass's should \override{} any method that would otherwise break an invariant.
+\item A superclass should never call a \dynamic{}ally bound method in a constructor.
+\item Adding an overloading method to a superclass may affect the subclass (particularly in Java).
+\end{itemize}
+\end{definition}
+
+In general a superclass does \textit{not} know what method may be invoked at \runtime{} for any overridable method.
+
+In C++ and C\# a superclass may declare a method as \texttt{virtual} if a subclass may override it. In C\# a subclass may specify a method with \texttt{\override{}} if a superclass declares it with \texttt{virutal}. In C\# a subclass may specify a method with \texttt{new} if it wants to specify that the method doesn't have anything to do with the superclass's method; it does not override and it has different behavior.
+
+\subsubsection{Binary Methods and the Visitor Pattern}
+
+A Binary method takes the \receiver{} and one parameter (usually of the same type or one related in a subtype hierarchy). We want behavior to depend on the \textit{\dynamic{}} types of both. However simple overriding is not sound because parameter types should be \contra{}.
+
+\begin{example}[Equals]
+Consider that when we want to invoke an \texttt{equals} method we would like to have the most specialized version invoked.
+\begin{lstlisting}[language=Java]
+class Animal {
+    public boolean equals (Animal a) { ... }
+}
+
+class Cat extends Animal {
+    public boolean equals (Cat c) { ... }
+}
+\end{lstlisting}
+\texttt{Cat}'s \texttt{equals} does \textit{not} \override{} \texttt{Animal}'s. \texttt{Cat}'s \texttt{equals} \textit{overloads} \texttt{Animal}'s.
+Consider:
+\begin{lstlisting}[language=Java]
+Cat c1 = new Cat();
+Cat c2 = new Cat();
+Animal a1 = c1;
+Animal a2 = c2;
+a1.equals(a2);
+\end{lstlisting}
+Here \texttt{Animal}'s \texttt{equals} method is called even though \texttt{Cat}'s would be safe and what we want.
+If we allowed an override than the following unsafe code would be accepted:
+\begin{lstlisting}[language=Java]
+Cat c = new Cat();
+Animal a = new Animal();
+c.equals(a);
+\end{lstlisting}
+Since method resolution is determined by the \dynamic{} type of the \receiver{} \texttt{c}, \texttt{Cat}'s \texttt{equals} could be called which makes bad assumptions about its parameter in this case. What we would like is resolution to be determined by both the \dynamic{} type of the \receiver{} and that of its argument.
+\end{example}
+
+In languages such as Java, C++, and C\# how does one specialize behavior based on the \dynamic{} type of both the \receiver{} and that of its argument?
+
+\begin{example}[Type tests]
+We can check the type of the parameter:
+\begin{lstlisting}[language=Java]
+class Cat extends Animal {
+    public boolean equals (Animal a) {
+        if (a instanceof Cat) {
+            Cat c = (Cat) a;
+            ...
+        } else {
+            return super.equals(a);
+        }
+    }
+}
+\end{lstlisting}
+\end{example}
+
+\begin{example}[Double invocation]
+Both the super and subclass may have appropriate methods to dispatch to depending on the parameter types.
+Consider the following:
+\begin{lstlisting}[language=Java]
+class Animal {
+    public boolean equals (Animal a) {
+        // Give up
+        return a.equalsAnimal(this);
+    }
+
+    // Terminal method
+    public boolean equalsAnimal(Animal a) {
+        // General for all Animals, Gives up
+        ...
+    }
+
+    public boolean equalsBirb(Birb b) {
+        // Give up
+        return this.equalsAnimal(b);
+    }
+
+    public boolean equalsCat(Cat c) {
+        // Give up
+        return this.equalsAnimal(c);
+    }
+}
+
+class Birb extends Animal {
+    public boolean equals (Animal a) {
+        return a.equalsBirb(this);
+    }
+
+    public boolean equals (Birb b) {
+        // Specific code for Birbs
+        ...
+    }
+}
+
+class Cat extends Animal {
+    public boolean equals (Animal a) {
+        return a.equalsCat(this);
+    }
+
+    public boolean equalsCat(Cat c) {
+        // Specific code for Cats
+        ...
+    }
+}
+\end{lstlisting}
+In general if we want to specialize a binary method $m : \receiver{} \times T \rightarrow A$ where there is a super class $T$ and subclasses $S_i$, $\forall i, \subtype{S_i}{T}$, we need the following:
+\begin{itemize}
+\item $m \in T \wedge \forall i, m \in S_i$.
+\item $\forall i, m_i : \receiver{} \times S_i \rightarrow A \wedge m_i \in T \wedge m_i \in S_i$
+\item $m_{general} : \receiver{} \times T \rightarrow A \wedge m_{general} \in T$
+\end{itemize}
+Where $\in$ is used to denote a method is explicitly implemented in a particular class.
+In Java $m_{general}$ is inherited by the $S_i$. $m \in T$ and each $m_i \in T$ will dispatch to $m_{general}$. $m$ in each $S_i$ will dispatch to $m_i$ flipping the arguments.
+\end{example}
+
+\begin{example}[Dynamic resolution in C\#]
+C\# allows one to \dynamic{}ally resolve the calling method:
+\begin{lstlisting}[language = {[Sharp]C}]
+class Animal {
+    boolean equals (Animal a) {
+        // General code for Animals
+    }
+}
+
+class Cat : Animal {
+    boolean equals (Cat c) {
+        // Specific code for Cats
+    }
+}
+
+static boolean equals (Animal a1, Animal a2) {
+    return (a1 as dynamic).equals(a2 as dynamic);
+}
+\end{lstlisting}
+\texttt{Cat}'s \texttt{equals} \textit{overloads} \texttt{Animal}'s. Which method is called depends on the \textit{\runtime{}} type of each argument. This requires \runtimecheck{}s.
+\end{example}
+
+\begin{example}[Multiple Dispatch]
+Some (experimental) languages support \textit{multipe dispatch}.
+\begin{lstlisting}[language=Java]
+class Animal {
+    boolean equals (Animal a) {
+        // General code for Animals
+    }
+}
+
+class Cat : Animal {
+    boolean equals (Animal@Cat c) {
+        // Specific code for Cats
+    }
+}
+\end{lstlisting}
+In a call to \texttt{equals} the method is determined by the \dynamic{} type of the argument as well.
+In \texttt{Cat}'s \texttt{equals}, the parameter \texttt{c} has \static{} type \texttt{Animal} and \textit{dispatch} type \texttt{Cat}. Every call needs to have a unique best method, or else typechecking fails.
+\end{example}
+
+\subsection{Multiple Inheritance}
+
+\epigraph{\itshape I made up the term ``object-oriented," and I can tell you I did not have C++ in mind.}{Alan Kay}
+
+\epigraph{\itshape C makes it easy to shoot yourself in the foot. In C++ it's harder, but when you do, you blow off your whole leg.}{Bjarne Stroustrup}
+
+A type may have several subtypes and (direct) supertypes.
+For instance, it makes sense to say $\subtype{Tabby}{Cat}$ and $\subtype{Tiger}{Cat}$, as well as $\subtype{Cat}{Animal}$ and that $\subtype{Cat}{Furball}$, where $Animal$ and $Furball$ are not necessarily related. Sometimes we would like to reuse code from several superclasses as well. In OOP, why not combine both into \textit{multiple inheritance}?
+
+\begin{remark}
+Java and C\# only support single inheritance but using aggregation may simulate single inheritance and interfaces.
+\end{remark}
+
+Multiple inheritance is just bad. Here's why.
+
+\subsubsection{Ambiguities}
+
+A subclass $S$ may inherit directly from both $T_1$ and $T_2$, and $T_1$ and $T_2$ may both have a field $f$ or method $m$. When an instance of $S$ is the \receiver{} for $m$ or $f$ how does it choose which one? The client may need to explicitly refer to which field or method. Sometimes methods may be combined into one overriding method in the subclass.
+
+\subsubsection{Repeated Inheritance}
+
+Sometimes a subclass $S$ inherits directly from both $T_1$ and $T_2$, where $T_1$ and $T_2$ both inherit directly from $Top$. $Top$ may have some field $f$. How many copies of $f$ should $S$ have? This is the infamous \textit{diamond problem}.
+
+By default C++ has \textit{non-virtual} inheritance, where two copies of each $Top$ class exist in memory. The constructor for $Top$ is called twice, once for $T_1$, and once for $T_2$.
+
+In C++ one may also inherit \textit{virtually}, where only one copy of $Top$ exists in memory and its constructor is just called once.
+In this case, the smallest subclass $S$ must call the constructor for $Top$ directly.
+If there is a constructor for $Top$ without arguments, this will be called first by default. Constructors should not realy upon the virutal superclass constructors they call to maintain invariants.
+
+\subsection{Linearization}
+
+Scala has \textit{mixins} or \textit{traits} that may help specialize classes. Traits extend exactly one superclass and some number of traits. When mixing in a trait in a class declaration the class \textit{must} be a subclass of the direct superclass of each trait.
+
+\begin{remark}
+$$forall ~ \text{classes} ~ C, \text{traits} ~ T ~ \text{s.t.} ~ T ~ extends ~ C, \subtype{T}{C}$$
+\end{remark}
+
+The dynamic dispatch order is determined by \textit{linerization}.
+
+\begin{definition}[Linearization]
+$L$ determines the dispatch order.
+\begin{align} 
+L(C ~ extends ~ C' ~ with ~ T_1 ... ~ with ~ T_n) &=  C, L(T_n) \bullet ... \bullet L(T_1) \bullet L(C') \\
+\varepsilon \bullet B &= B \\
+(a, A) \bullet B &=
+\begin{cases}
+A \bullet B & a \in B \\
+a, A \bullet B & a \notin B
+\end{cases}
+\end{align}
+The initialization order is the opposite.
+\end{definition}
+
+
+A subclass only has one copy of a superclass in memory. In initialization each constructor is called exactly once, where arguments to a superclass constructor are provided by the immediately preceding class in the linearization order.
+
+\behavioral{} subtyping can only be checked when a trait is mixed in. Traits are difficult to reason about because:
+\begin{itemize}
+\item Like in C++ virutal inheritance they don't know how their superclasses get initialized.
+\item Traits do not know which methods they \override{}.
+\item Traits do not know \static{}ally which class \texttt{super} calls will go to.
+\end{itemize}
+
+\section{More Typing}
+
+\epigraph{\itshape If Sun were to hand the management of Java over to a committee of monkeys, would it be more successful?}{Eric Sink}
+
+\subsection{Bytecode Verification}
+
+The Java Virtual Machine (JVM) runs \textit{java bytecode}. In order to make some guarantees about some arbitrary bytecode loaded by a program, the bytecode must be typechecked.
+
+\begin{definition}[Java Virutal Machine]
+JVM is a stack-based language that consists of the following:
+\begin{itemize}
+\item A stack (duh). Operations push elements onto the stack and pop them off.
+\item A (potentially finite) set of registers. The first stores \texttt{this}, then method parameters, then local variables.
+\item A heap where objects are stored in memory. The stack and regiters may have pointers to the heap.
+\end{itemize}
+\end{definition}
+
+A sample of the JVM instruction set is provided in \ref{fig:JVMinstr}.
+\begin{figure}
+\centering
+$\begin{array}{r c l l}
+\instr{}
+& ::= & \const{z} & \text{push \texttt{int} $z$ onto the stack} \\
+& \mid & \load{\tau}{r} & \text{push value in register $r$ onto the stack} \\
+& \mid & \store{\tau}{r} & \text{pop top value from stack into register $r$} \\
+& \mid & \op{\otimes} & \text{pop top 2 values $v_1, v_2$ from stack and push $v_1 \otimes v_2$} \\
+& \mid & \invoke{C}{m}{\tau_r (\tau_1, ..., \tau_n)} & \text{pop args $v_n, ..., v_1$ \receiver{} $v$ then push $C.m.v(v_1,...,v_n)$}  \\
+& \mid & \return{\tau} & \text{pop $v$ and method return $v$} \\
+& \mid & \goto{l} & \text{jump to program line $l$}
+\end{array}$
+\caption{JVM instructions}
+\label{fig:JVMinstr}
+\end{figure}
+
+JVM instructions are typechecked. There's a max stack size $MS$, input type list for the stack $S$, input type list for registers $R$, and output type list for the stack $S'$, and an output type list for the registers $R'$. Some of the basic rules are given in \ref{fig:JVMjudge}.
+
+\begin{figure}
+\centering
+\begin{mathpar}
+\boxed{\judge{MS}{\instr}{S}{R}{S'}{R'}} \\
+
+\inferrule
+{|S| < MS}
+{\judge{MS}{\const{z}}{S}{R}{\texttt{int}.S}{R}}
+
+\inferrule
+{|S| < MS \\
+\subtype{R(r)}{\tau}}
+{\judge{MS}{\load{\tau}{r}}{S}{R}{\tau.S}{R}}
+
+\inferrule
+{\subtype{\tau'}{\tau} \\
+R'(r) = \tau}
+{\judge{MS}{\store{\tau}{r}}{\tau'.S}{R}{S}{R'}}
+
+\inferrule
+{1 + |S| < MS \\
+\otimes : \tau_1 \times \tau_2 \rightarrow \tau \\
+\subtype{\tau_1'}{\tau_1} \\
+\subtype{\tau_2'}{\tau_2}}
+{\judge{MS}{\op{\otimes}}{\tau_1'.\tau_2'.S}{R}{\tau.S}{R}}
+
+\inferrule
+{n + |S| < MS \\
+\subtype{\tau'}{C} \\
+\subtype{\tau_1'}{\tau_1} ~ ... ~ \subtype{\tau_n'}{\tau_n} \\
+}
+{\judge{MS}{\invoke{C}{m}{\tau_r (\tau_1, ..., \tau_n)}}{\tau_n'...\tau_1'.\tau'.S}{R}{\tau_r.S}{R}} \\
+
+\inferrule
+{ }
+{\judge{MS}{\goto{}}{S}{R}{S}{R}}
+
+\inferrule
+{\subtype{\tau'}{\tau}}
+{\judge{MS}{\return{\tau}}{\tau'.S}{R}{\emptyset}{\emptyset}}
+\end{mathpar}
+\caption{JVM instruction typing}
+\label{fig:JVMjudge}
+\end{figure}
+
+\begin{remark}
+Note that the rule for stores does not check that the previous type in the register is related. Thus bytecode typing allows strong updates, something not allowed in java source code.
+\end{remark}
+
+Instructions may have several predecessors because of jumps. Thus the \textit{smallest common supertype}, or \textit{join} $\sqcup$ needs to be selected.
+
+\begin{remark}
+With multiple subtyping (such as with interfaces in Java) it may not be possible to calculate the join. A \runtimecheck{} is necessary for interface method invocation.
+\end{remark}
+
+(Old) Java needed to perform type inference on bytecode. Because joins need to be computed, a \textit{worklist algorithm} is necessary.
+In this dataflow analysis, for each instruction $\instr{}(p)$ at a program point (line) $p$, we have $\wkin{p}$ for the types of the stack and registers before the instruction, and $\wkout{p}$ for the types of the stack and registers after the instruction.
+Thus we have:
+
+\begin{equation}
+\instr{}(p) : \wkin{p} \rightarrow \wkout{p}
+\end{equation}
+
+The dataflow equation we solve for is:
+
+\begin{equation}
+\wkin{p} = \bigsqcup \{ \wkout{q} \mid q ~ \text{predeces} ~ p \}
+\end{equation}
+
+We want to take all of the precedessor instructions of $p$, take the joins of their types in their stacks and registers.
+This join is exactly what we want to compute for $\wkin{p}$.
+
+To start out we want the stack to be empty, and the registers to contain the known parameter types $P_i$ and $\top$ for the local variables. The algorithm is given in \ref{alg:worklist}. Note that $\sqcup$ fails for different stack sizes.
+
+\begin{algorithm}
+\caption{JVM Type Inference}\label{alg:worklist}
+\begin{algorithmic}
+\State $\wkin{0} \gets (\varepsilon, [P_1, ..., P_n, \top, ..., \top])$
+\State $worklist \gets \{ p \mid \instr{}(p) ~ \text{in method} \}$
+\While{$worklist \neq \emptyset$}
+\State $p \gets \min{worklist}$
+\State $worklist \gets worklist \setminus \{ p \}$
+\State $\instr{}(p) : \wkin{p} \rightarrow \wkout{p}$
+\ForAll{$q$ succeeding $p$}
+    \State $\wkin{q} \gets \wkin{q} \sqcup \wkout{p}$
+    \If{$\wkin{q}$ has changed}
+        \State $worklist \gets worklist \cup \{ q \}$
+    \EndIf
+\EndFor
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\href{https://www.irisa.fr/celtique/teaching/SOS/2021/Leroy-bytecode-verification-JAR.pdf}{Read this to learn more about java bytecode verification.}
+
+\subsection{Parametric Polymorphism}
+
+Classes and methods may be parameterized with types (\textit{yay!}). In OOP this is called \textit{generic types}. It is possible to specify upper bounds on these type parameters. Upper bounds via subtyping on type parameters is the lame OOP way of accomplishing ad-hoc polymorphism, like typeclasses in Haskell or traits in Rust. If $\subtype{S}{T}$, how should we relate $\generic{G}{S}$ and $\generic{G}{T}$?
+
+\begin{example}[Covariant Generics]
+Suppose:
+\begin{mathpar}
+\inferrule
+{\subtype{S}{T}}
+{\subtype{\generic{G}{S}}{\generic{G}{T}}}
+\end{mathpar}
+In Java we could define a class for lists:
+\begin{lstlisting}[language=Java]
+class List<A> {
+    void add (A a) { ... }
+    A head () { ... }
+}
+\end{lstlisting}
+Suppose we had client code:
+\begin{lstlisting}
+List<String> ls = new List<String>();
+List<Object> lo = ls;
+ls.add("Hello there");
+Object o = lo.head();
+lo.add(new Object);
+\end{lstlisting}
+Everything works fine until we add a \texttt{Object} to the \texttt{String} list. recall the principle that \covar{} types work for reads but not for writes! Thus in general \covar{} generics are not sound. If we allowed \covar{} generics than we would need a \textit{\runtimecheck{}} for \textit{writes}.
+\end{example}
+
+\begin{example}[Contravariant Generics]
+Suppose:
+\begin{mathpar}
+\inferrule
+{\subtype{S}{T}}
+{\subtype{\generic{G}{T}}{\generic{G}{S}}}
+\end{mathpar}
+Consider the previous \texttt{List} class.
+Now we could write client code:
+\begin{lstlisting}[language=Java]
+List<Object> lo = new List<Object>();
+List<String> ls = lo;
+lo.add(new Object);
+ls.add("General Kenobi");
+String s = ls.head();
+\end{lstlisting}
+This time everything works until we try to get the head from the list as a \texttt{String}, because it is an  \texttt{Object}. The recall the principle that \contra{} types work for writes but not for reads! Thus in general \contra{} generics are unsound. If we allowed \contra{} generics than we would need a \textit{\runtimecheck{}} for \textit{reads}.
+\end{example}
+
+Java has chosen to only allow \textit{\invar{}} generics.
+By contrast Scala only has \invar{} generics by default, allowing one to specify if a type parameter is \covar{} or \contra{}. Scala allows \contra{} type parameters when they only occur in a positive position, are only read from.
+Scala allows \contra{} type parameters when they only occur in a negative positive, i.e. are only written to.
+
+\begin{example}[Scala \covar{} parameter]
+Consider an immutable cell in Scala:
+\begin{lstlisting}[language=Scala]
+class ImmutableCell[+A] (val : A) {
+    def get() : A { val }
+}
+\end{lstlisting}
+Here \texttt{A} is only used as a return type, i.e. a positive position.
+
+Question: what about constructor?
+\end{example}
+
+\begin{example}[Scala \contra{} parameter]
+Consider a comparison interface:
+\begin{lstlisting}[language=Scala]
+interface Comparison[-A] {
+    int compare(A);
+}
+\end{lstlisting}
+Here \texttt{A} is only used as a method parameter to be written to, i.e. a negative positive.
+\end{example}
+
+When we are stuck with $\invar{}$ generics how do we write code that works with different instantiations of a type parameter?
+
+In OOP (especially Java) this is an issue when what you want is ad-hoc polymorphic functionality for a supertype that works on subtypes, but since you don't have ad-hoc polymorphism you need to create another interface and class(es) that have their own subtype relations. Also you cannot pass functions as arguments in these languages in general so ... here's a convoluted example to motivate a kind of problem one may encounter.
+
+\begin{example}[Additional type parameters]
+Here we are going to try to demonstrate that Java forces one to twist themselves into a prezle if they just want to use standard type parameters.
+Suppose there's some \texttt{Comparator} interface and generic \texttt{TreeSet} class that represents a set implemented in a tree data structure.
+In order to search for elements it needs to compare elements in binary nodes of the tree.
+Thus it needs some way to have a \texttt{compare} function for its elements.
+Because we are in Java we cannot pass functions as arguments.
+\begin{lstlisting}[language=Java]
+interface Comparator<T> {
+    int compare(T x, T y);
+}
+
+class TreeSet<E extends Comparator<E>> {
+    ...
+    TreeSet () {}
+    void add (E elem) { ... }
+    boolean member (E elem) { ... }
+    void remove (E elem) { ... }
+}
+\end{lstlisting}
+Suppose that we would like to create a \texttt{TreeSet<Student>} where \texttt{Student}s are a \texttt{Person}, and \texttt{Person} has a general comparison operation for people.
+\begin{lstlisting}[language=Java]
+class Person implements Comparator<Person> {
+    ...
+    int compare (Person x, Person y) { ... }
+}
+
+class Student extends Person {
+    ...
+}
+\end{lstlisting}
+Where we would like to have client code:
+\begin{lstlisting}[language=Java]
+TreeSet<Student> ts = new TreeSet<Student>();
+\end{lstlisting}
+Well too bad.
+Java gets angry because \texttt{Student} is ``not within the bounds of the type variable (of \texttt{TreeSet})."
+That is, we don't know $\subtype{Student}{\generic{Comparator}{Student}}$.
+If we try to have \texttt{Student} directly implement the \texttt{Comparator} interface Java still isn't satisfied:
+\begin{lstlisting}[language=Java]
+class Student extends Person implements Comparator<Student> {
+    int compare(Student x, Student y) { ... }
+}
+\end{lstlisting}
+Java complains that ``\texttt{Comparator} cannot be inherited with different arguments: \texttt{Student} and \texttt{Person}."
+If \texttt{Person} does not implement \texttt{Comparator} then Java is satisfied, but we would like it to.
+If we would like to have our cake and eat it too we need to modify our \texttt{TreeSet} class as follows:
+\begin{lstlisting}[language=Java]
+class TreeSet<E extends F, F extends Comparator<F>> {
+    ...
+    TreeSet () {}
+    void add (E elem) { ... }
+    boolean member (E elem) { ... }
+    void remove (E elem) { ... }
+}
+\end{lstlisting}
+And then out client code would need to look like:
+\begin{lstlisting}[language=Java]
+TreeSet<Person, Student> ts = new TreeSet<Person, Student>();
+\end{lstlisting}
+Here we needed to make explicit in \texttt{TreeSet}'s type parameters that the element type does not necessarily need to have its own \texttt{Comparator}, but that it has a supertype that implements \texttt{Comparator}.
+As shown this is very tedious.
+\end{example}
+
+How can we avoid addition type parameters and constraints?
+
+\subsubsection{Wildcards}
+
+\begin{definition}[Wildcards]
+Java has so called \textit{wildcard}s that represent \textit{existential types}.
+\begin{equation}
+\generic{G}{?} \triangleq \exists A, \generic{G}{A}
+\end{equation}
+In Java there is no way to explicitly instantiate these existential types.
+Java's type system does this automatically.
+The type argument to the instance of an existential type is abstract to clients.
+\end{definition}
+
+\begin{example}[Wildcard identity]
+Java accepts the following identity function:
+\begin{lstlisting}[language=Java]
+static List<?> id(List<?> l) {
+    return l;
+}
+\end{lstlisting}
+In the body of \texttt{id} the Java compiler is able to show $\exists E, \generic{List}{E}$, where \texttt{l} is a \textit{proof} of $\exists E, \generic{List}{E}$.
+However it does not know that the paramater type and return type are the same.
+\begin{lstlisting}[language=Java]
+List<String> l = id(new ArrayList < String > );
+\end{lstlisting}
+The above fails because java only knows that the result of \texttt{id(new ArrayList<List>)} is $\exists E, \generic{List}{E}$.
+Java does not remember that the $E$ in question is a \texttt{String}.
+The best we can do is:
+\begin{lstlisting}[language=Java]
+List<?> l = id(new ArrayList < String > );
+\end{lstlisting}
+Java does not even allow:
+\begin{lstlisting}[language=Java]
+List<Object> l = id(new ArrayList < String > );
+\end{lstlisting}
+Since Java generics are \textit{\invar{}} in general $\exists E, \generic{G}{E} \nless: \generic{G}{Object}$.
+\end{example}
+
+\begin{example}[Reading from and writing to wildcards]
+Java rejects the following:
+\begin{lstlisting}[language=Java]
+static void merge (Collection<?> x, Collection<?> y) {
+    x.addAll(y);
+}
+\end{lstlisting}
+We have the following types:
+\begin{align*}
+    \texttt{x} &: \exists A, \generic{Collection}{A} \\
+    \texttt{y} &: \exists B, \generic{Collection}{B} \\
+    \texttt{addAll} &: \forall C, \generic{Collection}{C} \times (\exists D, \generic{Collection}{D} \wedge \subtype{D}{C}) \rightarrow ()
+\end{align*}
+When \texttt{x} is the receiver of \texttt{addAll}, its universal type $C$ is instantiated with some unknown parameter type.
+Java is implicitly unpacking \texttt{x}'s type as some unknown $A$.
+$$ \generic{\texttt{addAdll}}{A} : \generic{Collection}{A} \times (\exists D, \generic{Collection}{D} \wedge \subtype{D}{A}) \rightarrow ()$$
+When \texttt{y} is passed as an argument to \texttt{x.addAll} \texttt{y}'s type is implicitly unpacked with some unknown type parameter $B$.
+Java will not be able to satisfy the type bounds of
+$$ \generic{\texttt{addAdll}}{A} : \generic{Collection}{A} \times (generic{Collection}{B} \wedge \subtype{B}{A}) \rightarrow ()$$
+Since there's no relationship between $A$ and $B$.
+Even if we try:
+\begin{lstlisting}[language=Java]
+static void merge (Collection<?> x, Collection<?> y) {
+for (Object elem : y) {
+        x.add(elem);
+    }
+}
+\end{lstlisting}
+Java will still be unconvinced.
+We have:
+\begin{align*}
+\texttt{add} &: \forall C, \generic{Collection}{C} \times C \rightarrow () \\
+\generic{\texttt{add}}{A} &: \generic{Collection}{A} \times A \rightarrow ()
+\end{align*}
+Which is even more strict.
+Of course $\subtype{A}{Object}$ and $\subtype{B}{Object}$.
+However in order to pass \texttt{elem} into \texttt{x.add}, we need that \texttt{\subtype{Object}{A}}.
+\end{example}
+
+We would like to be able to constrain wildcards in some way.
+
+\begin{definition}[Bounding wildcards]
+Java offers the following:
+\begin{align*}
+\generic{G}{? ~ \texttt{extends} ~ T} &\triangleq \exists A, \generic{G}{A} \wedge \subtype{A}{T} \\
+\generic{G}{? ~ \texttt{super} ~ T} &\triangleq \exists A, \generic{G}{A} \wedge \subtype{T}{A}
+\end{align*}
+\end{definition}
+
+\begin{example}[Reading from and writing to wildcards revisited]
+We may now constrain the existential type parameters in our \texttt{merge} example:
+\begin{lstlisting}[language=Java]
+static <E> void merge (Collection<? super E> x, Collection<? extends E> y) {
+    x.addAll(y);
+    for (A elem : y) {
+        x.add(elem);
+    }
+}
+\end{lstlisting}
+Everything works now because we have the following:
+\begin{align*}
+\texttt{x} &: \exists A, \generic{Collection}{A} \wedge \subtype{E}{A} \\
+\texttt{y} &: \exists B, \generic{Collection}{B} \wedge \subtype{B}{E} \\
+\texttt{add} &: \forall C, \generic{Collection}{C} \times C \rightarrow () \\
+\texttt{addAll} &: \forall C, \generic{Collection}{C} \times (\exists D, \generic{Collection}{D} \wedge \subtype{D}{C}) \rightarrow () \\
+\end{align*}
+When \texttt{x}'s type gets implicitly unpacked we get some type $A$ and the knowledge that $\subtype{E}{A}$.
+Similarly when \texttt{y}'s type is unpacked we get some type $B$ and the knowledge that $\subtype{B}{E}$.
+When \texttt{x} is the \receiver{} of \texttt{add} and \texttt{addAll} we get:
+\begin{align*}
+\generic{\texttt{add}}{A} &: \generic{Collection}{A} \times A \rightarrow () \\
+\generic{\texttt{addAll}}{A} &: \generic{Collection}{A} \times (\exists D, \generic{Collection}{D} \wedge \subtype{D}{A}) \rightarrow () \\
+\end{align*}
+Thus when we pass \texttt{elem} into \texttt{x.add} we need to show that $\subtype{B}{A}$.
+This is true by transitivity of subtyping.
+The same evidence is used when we pass \texttt{y} into \texttt{x.addAll}.
+\end{example}
+
+In java, given some generic class $G$, we can use wildcards to make certain instances of $G$ \covar{} or \contra{}.
+This is called \textit{use-site variance}.
+
+\begin{example}[Use-site variance]
+Suppose we have some cell class:
+\begin{lstlisting}[language=Java]
+class Cell<E> {
+    private E elem;
+    Cell (E elem) { this.elem = elem; }
+    E get () { return this.elem; }
+    void set (E elem) { this.elem = elem; }
+}
+\end{lstlisting}
+Say we have that $\texttt{Student extends Person}$.
+We can create a \covar{} \texttt{Cell} that only allows us to perform reads:
+\begin{lstlisting}[language=Java, numbers=left]
+Cell<? extends Person> readOnly = new Cell<Student>(new Student());
+Object o  = readOnly.get();  // good
+Person p  = readOnly.get();  // good
+Student s = readOnly.get();  // bad
+readOnly.set(new Object());  // bad
+readOnly.set(new Person());  // bad
+readOnly.set(new Student()); // bad
+\end{lstlisting}
+Both of the final \texttt{set} calls fail, as Java is unable to correctly constrain the type parameters.
+We have the type information:
+\begin{align*}
+\texttt{readOnly} &: \exists E, \generic{Cell}{E} \wedge \subtype{E}{Person} \\
+\texttt{readOnly.get} &: () \rightarrow E \wedge \subtype{E}{Person} \\
+\texttt{readOnly.set} &: E \wedge \subtype{E}{Person} \rightarrow ()
+\end{align*}
+Where for \texttt{readOnly.get} and \texttt{readOnly.set} $E$ is some unpacked type whose only constraint is that $\subtype{E}{Person}$.
+Let's take this line by line.
+\begin{enumerate}
+\item Declare a \covar{}-use-site \texttt{Cell} with an upper bound \texttt{Person}.
+\item Typechecks because the result $E$ of \texttt{readOnly.get} is bounded above by \texttt{Person}, so it is acceptable to assign it to an \texttt{Object}.
+\item  Typechecks because the result $E$ of \texttt{readOnly.get} is bounded above by \texttt{Person}, so it is acceptable to assign it to a \texttt{Person}.
+\item Reading as a \texttt{Student} fails because we need to somehow show that $\subtype{E}{Student}$, but all we have is that $\subtype{E}{Person}$. In principle $E$ could be a \texttt{Person}, which does not work as a \texttt{Student} in general.
+\item Setting the cell to \texttt{Object} fails because we would need to show that $\subtype{Object}{E}$ and $\subtype{Object}{Person}$, which does not hold.
+\item Attempting to set the cell to a \texttt{Person} fails because we do not know that $\subtype{Person}{E}$.
+\item Setting the cell to a \texttt{Student} fails because of the same principle.
+\end{enumerate}
+Intuitively writing to \texttt{readOnly} fails because we have information about the lower bound of $E$.
+
+We may also create a \contra{} cell that only allows us to perform writes. Suppose that there is also some class \texttt{MasterStudent extends Student}.
+\begin{lstlisting}[language=Java, numbers=left]
+Cell<? super Student> writeonly = new Cell<Person>(new Person());
+writeonly.set(new MasterStudent()); // good
+writeonly.set(new Student());       // good
+writeonly.set(new Person());        // bad
+writeonly.set(new Object());        // bad
+MasterStudent m = writeonly.get();  // bad
+Student s       = writeonly.get();  // bad
+Person p        = writeonly.get();  // bad
+Object o        = writeonly.get();  // good
+\end{lstlisting}
+
+We have the type information:
+\begin{align*}
+\texttt{readOnly} &: \exists E, \generic{Cell}{E} \wedge \subtype{Person}{E} \\
+\texttt{readOnly.get} &: () \rightarrow E \wedge \subtype{Person}{E} \\
+\texttt{readOnly.set} &: E \wedge \subtype{Person}{E} \rightarrow ()
+\end{align*}
+Where for \texttt{readOnly.get} and \texttt{readOnly.set} $E$ is some unpacked type whose only constraint is that \\ $\subtype{Person}{E}$.
+Let's take this line by line.
+
+\begin{enumerate}
+\item Declares a \contra{}-use-site \texttt{Cell} with a lower bound \texttt{Student}.
+\item Typechecks because we have that $\subtype{MasterStudent}{E}$ from $\subtype{MasterStudent}{Student}$ \\ and $\subtype{Student}{E}$.
+\item Typechecks because we have that $\subtype{Student}{E}$.
+\item Fails because $\subtype{Person}{E}$ does not hold.
+\item Fails because $\subtype{Object}{E}$ does not hold.
+\item Fails because $\subtype{E}{MasterStudent}$ does not hold in general.
+\item Fails because $\subtype{E}{Student}$ does not hold in general.
+\item Fails because $\subtype{E}{Person}$ does not hold in general.
+\item Typechecks because $\subtype{E}{Objects}$ \textit{always} holds.
+\end{enumerate}
+In principle it is possible to downcast to a more specific type.
+\end{example}
+
+\begin{example}[TreeSet revisited]
+We may now only have a single type parameter for \texttt{TreeSet} via wildcards.
+\begin{lstlisting}[language=Java]
+class TreeSet<E extends Comparator<?>> {
+    ...
+    TreeSet () {}
+    void add (E elem) { ... }
+    boolean member (E elem) { ... }
+    void remove (E elem) { ... }
+}
+\end{lstlisting}
+We may now define client code:
+\begin{lstlisting}[language=Java]
+TreeSet<Student> ts = new TreeSet<Student>();
+\end{lstlisting}
+\end{example}
+
+In general wildcards allow more flexibility than vanilla type parameters.
+\begin{itemize}
+\item Java does not allow lower bounds \texttt{super} for normal type parameters.
+\item Instantiation of a wildcard $\generic{G}{?}$ may change over time: it may be reassigned an instance with a different type argument. However when reassigning a normal generic instance of $\generic{G}{T}$ it must always have a type argument of exactly $T$.
+\end{itemize}
+
+For some generic type $G$, we may define the set of instance types given some type argument.
+TODO: define this better or remove.
+\begin{align}
+\llbracket \generic{G}{T} \rrbracket &= \{ \generic{H}{T} \mid \forall H, \subtype{H}{G} \} \\
+\llbracket \generic{G}{?} \rrbracket &= \{ \generic{H}{T} \mid \forall H, T, \subtype{H}{G} \} \\
+\llbracket \generic{G}{\subtype{?}{T}} \rrbracket &= \{ \generic{H}{S} \mid \forall H, S, \subtype{H}{G} \wedge \subtype{S}{T} \} \\
+\llbracket \generic{G}{\subtype{S}{?}} \rrbracket &= \{ \generic{H}{T} \mid \forall H, T, \subtype{H}{G} \wedge \subtype{S}{T} \}
+\end{align}
+
+\begin{definition}[Subtyping generics]
+Given generic types $H$ and $G$, we say that:
+$$\subtype{\generic{H}{\mathcal{I}}}{\generic{G}{\mathcal{I}}} \equiv \llbracket \generic{H}{\mathcal{I}} \rrbracket \subseteq \llbracket \generic{G}{\mathcal{I}} \rrbracket $$
+where $\mathcal{I}$ is either a type parameter or a wildcard bound.
+\end{definition}
+
+\begin{remark}
+\href{https://arxiv.org/pdf/1605.05274.pdf}{Subtyping in Java is undecidable do to wildcards.}
+\end{remark}
+
+\subsubsection{Type Erasure}
+
+For backwards compatibility, Sun did not want to change the JVM after generics were introduced. So generic type information is erased by the compiler. $\generic{G}{T}$ becomes just $G$ in java bytecode. Occaisionally the compiler needs to insert casts to the class used for the type argument for instances of generic types. Because of this, Java disallows the following:
+\begin{itemize}
+\item Performing \texttt{instanceOf} on a generic instance type $\generic{G}{T}$.
+\item \texttt{.class} of a generic instance type.
+\item arrays of generic types $\generic{G}{T}[~]$.
+\end{itemize}
+
+C\# allows the above.
+
+\begin{example}[Erasure and overloading]
+Java disallows the following because there is a name clash between each \texttt{foo} as a result of type erasure.
+\begin{lstlisting}[language=Java]
+class Erasure<S, T> {
+    void foo (S p) {}
+    void foo (T p) {}
+}
+\end{lstlisting}
+However C\# does allow this in general.
+If one chooses to instantiate \texttt{Erausre} with the same types any call to foo will be ambiguous and cause a typechecking error.
+\begin{lstlisting}[language={[Sharp]C}]
+Erasure<Object, Object> erasure = new Erasure<Object, Object>();
+erasure.foo(new Object()); // ambiguous!
+\end{lstlisting}
+In Java one can resolve the issue by giving the type parameters different upper bounds.
+\end{example}
+
+In Java static fields are shared by all instantiations of a generic class, but not in C\#.
+
+\subsubsection{C++ Templates}
+
+In C++ one provides type parameters to classes and methods via \textit{templates}. As you will see, intuitively templates are glorified macros.
+
+Every time a template is instantiated the C++ generates an instantiated version of the code for the class or method for the given type arguments. This causes \textit{code bloat}. Furthermore C++ templates are not typechecked. Only the parts of instance classes that get used after the class is instantiated get typechecked. In principle one could make all kinds of assumptions about the type parameter in a template class (about what methods and fields it has) and C++ will not complain unless its instantiation doesn't provide suitable type arguments.
+
+C++ later added \textit{concepts}.
+Concepts provide a way to specify constraints about a template's type parameter. These constraints are checked upon instantiation.
+To read more about concepts look \href{https://en.cppreference.com/w/cpp/language/constraints}{here}.
+
+\section{Information Hiding and Encapsulation}
+
+\epigraph{\itshape The problem with object-oriented languages is they’ve got all this implicit environment that they carry around with them. You wanted a banana but what you got was a gorilla holding the banana and the entire jungle.}{Joe Armstrong}
+
+\subsection{Information Hiding}
+
+\begin{definition}[Information Hiding]
+A technique to \textit{reduce} dependencies between modules.
+A module only provides clients with the fields and methods such that no invariants can be broken by clients.
+This is a \textit{\static{}} concept.
+\end{definition}
+
+Ideally class interfaces are thin and hide implementation details.
+To understand a single class hopefully one just has to understand the interfaces of any dependencies without looking at their implementations.
+
+To use a class a client should only need to know:
+\begin{itemize}
+\item The class name.
+\item The type parameters and their bounds.
+\item The signatures and pre and postconditions of exposed methods.
+\item The types, invariants, and constraints of exposed fields.
+\item The above for any superclass or superinterface.
+\end{itemize}
+
+\begin{example}[Subclass interface]
+We for some class $S$ we can consider the interface it has to its superclass $T$.
+This includes any \texttt{protected} fields and methods of the superclass.
+\end{example}
+
+\begin{example}[Friend (package) interface]
+Classes defined in the same package have access to each others \texttt{default} and \texttt{protected} fields and methods.
+They may be mutually defined.
+\end{example}
+
+Java offers the following access modifiers:
+\begin{itemize}
+\item \texttt{private}: Only the implementing class has access to these methods and fields. They can not even be \override{}n by subclasses. The most restrictive.
+\item \texttt{default}: Only classes defined in the same package has access to these fields and methods. In general they cannot be \override{}n by subclasses, unless the subclass is defined in the same package. Available in the friend interface.
+\item \texttt{protected}: These fields and methods are available to classes in the same package and any potential subclasses. Thus they may be \override{}n.  Available in the subclass and friend interface.
+\item \texttt{public}: Everyone and their mother has access to these fields and methods. Of course may be \override{}n.
+\end{itemize}
+
+Question: how do access modifiers interact with overloading?
+
+Recall \ref{fragile}. In principle any non-\texttt{private} field or method, anything that can be \override{}n may cause problems. Thus when changing a base class, any \textit{observable} behavior, i.e. \textbf{not} \texttt{private} must be preserved.
+
+\begin{definition}[JLS1 Java method selection]
+\label{jls1}
+When some \receiver{} $o$ invokes a method $m$, \static{}ally/at \compiletime{}:
+\begin{enumerate}
+\item Find the static declaration of $m$.
+\item Determine if $m$ is accessible at the call site.
+\item Determine if $m$ is virtual (may be \override{}n) or non-virtual.
+\end{enumerate}
+Then at \runtime{}
+\begin{enumerate}
+\item Compute the \receiver{}'s value.
+\item Based on the \dynamic{} type of the \receiver{} locate the method $m$ to invoke.
+\end{enumerate}
+\end{definition}
+
+\begin{definition}[The Access rule]
+The access modifier of an overriding method must be at least as open as that of the \override{}n method.
+\end{definition}
+
+\begin{definition}[Rules for overriding]
+If $\subtype{S}{T}$, $S.m$ \override{}s $T.m$ only if $T.m$ is accessible in $S.m$.
+\end{definition}
+
+\begin{example}[Default access methods]
+Consider the class \texttt{Super} defined in package \texttt{A}.
+\begin{lstlisting}[language=Java]
+package A;
+class Super {
+    void foo() {
+        System.out.println("A");
+    }
+}
+\end{lstlisting}
+And the class \texttt{Sub} in package \texttt{B}.
+\begin{lstlisting}[language=Java]
+package B;
+class Sub extends A.Super {
+    public void foo() {
+        System.out.println("B");
+    }
+}
+\end{lstlisting}
+Suppose we have the following client code that invokes \texttt{foo} in package \texttt{A}.
+\begin{lstlisting}[language = Java]
+Super soup = new Sub();
+soup.foo();
+\end{lstlisting}
+Since \texttt{Super.foo()} is not accessible in \texttt{Sub.foo()}, we would expect ``A" to be printed.
+This is because \texttt{Super.foo} is \texttt{default}, thus is not available in \texttt{Sub}, and thus cannot be \override{}n by \texttt{Sub.foo}.
+However we would be wrong under the rules in \ref{jls1}.
+Under these rules \texttt{Sub.foo} will be selected and ``B" will be printed.
+Let's step through the rules.
+First, at \compiletime{}:
+\begin{enumerate}
+\item We find the \static{} declaration of \texttt{foo} in \texttt{Super}.
+\item We find that \texttt{Super.foo} is accessible at the call site.
+\item The invocation is virtual.
+\end{enumerate}
+Then at \runtime{}:
+\begin{enumerate}
+\item We find the \dynamic{} type of the \receiver{} \texttt{soup} is \texttt{Sub}.
+\item We locate \texttt{Sub.foo} since it is \texttt{public} and in the class \texttt{Sub} of the \receiver{} \texttt{soup}.
+\end{enumerate}
+\end{example}
+
+\begin{definition}[JLS2 Java method selection]
+\label{jls2}
+Java fixed their broken \ref{jls1} by ensuring that the \dynamic{}ally selected method is able to \override{} the \static{}ally determined method.
+When some \receiver{} $o$ invokes a method $m$, \static{}ally/at \compiletime{}:
+\begin{enumerate}
+\item Find the static declaration of $m$.
+\item Determine if $m$ is accessible at the call site.
+\item Determine if $m$ is virtual (may be \override{}n) or non-virtual.
+\end{enumerate}
+Then at \runtime{}
+\begin{enumerate}
+\item Compute the \receiver{}'s value.
+\item Based on the \dynamic{} type of the \receiver{} locate the method $m$ to invoke \textbf{that \override{}s the \static{}ally determined method!}
+\end{enumerate}
+This is a refinement of \ref{twostep} that more precisely considers access modifiers.
+\end{definition}
+
+\begin{example}[Don't always use protection]
+Let's consider the previous example, but now the modifiers are \texttt{protected}.
+\begin{lstlisting}[language=Java]
+package A;
+class Super {
+    protected void foo() {
+        System.out.println("A");
+    }
+}
+\end{lstlisting}
+And the class \texttt{Sub} in package \texttt{B}.
+\begin{lstlisting}[language=Java]
+package B;
+class Sub extends A.Super {
+    protected void foo() {
+        System.out.println("B");
+    }
+}
+\end{lstlisting}
+Suppose we have the following client code that invokes \texttt{foo} in package \texttt{A}.
+\begin{lstlisting}[language = Java]
+package A;
+class Client {
+    void client() {
+        Super soup = new Sub();
+        soup.foo();
+    }
+}
+\end{lstlisting}
+Again we would expect \texttt{Super.foo} to be invoked, printing ``A", since \texttt{Sub.foo} is \texttt{protected}, and this unavailable to \texttt{Client} as \texttt{Client} is not a subclass of \texttt{Sub} nor is it in the same package.
+And again, even under the refined \ref{jls2} we would be wrong.
+Let's go through the steps.
+At \compiletime{}:
+\begin{enumerate}
+\item We determine that the \static{} declaration is \texttt{Super.foo}.
+\item Since \texttt{Super.foo} is \texttt{protected} and \texttt{Client} is in the same package as \texttt{Super}.
+\item \texttt{Super.foo} may be overriden.
+\end{enumerate}
+Then at \runtime{}:
+\begin{enumerate}
+\item The \dynamic{} value of \texttt{soup} is \texttt{Sub}.
+\item Indeed \texttt{Sub.foo} \override{}s \texttt{Super.foo}, thus \texttt{Sub.foo} is called.
+\end{enumerate}
+Thus \texttt{Client} was able to call a method that was not even available to it!.
+\end{example}
+
+\subsection{Encapsulation}
+
+Ideally, any module behaves the same way, according to its specification, no matter what the calling context it.
+The client relies upon the \textbf{consistency of internal representations} of the invoked module.
+Furthermore the module should prevent clients from being able to violate its invariants.
+For instance, non-\texttt{private} fields are a way to set yourself up for failure, so stay outta trouble kids.
+
+\begin{definition}[Encapsulation]
+A technique to separate the memory state available to different \textit{capsules}, so the memory states available to each capsule are disjoint.
+The boundaries delimiting memory are achieved via clear interfaces to these capsules so these capsules may guarantee invariants about their internal states.
+In this course encapsulation relates to the state of the program at \runtime{}, thus is a \textit{\dynamic{}} concept.
+\end{definition}
+
+Often the terms information hiding and encapsulation are used interchangeably, but here they are distinct.
+
+What is a capsule? It can be:
+\begin{itemize}
+\item An individual object.
+\item A structure composed of many objects.
+\item A class (with all of its objects).
+\item A package (with all of its classes and objects).
+\end{itemize}
+To provide encapsulation for a capsule we requires a precisely defined boundary and an interface for that boundary.
+The internal representation of a capsule is encapsulated if it can only be manipulated using its interface.
+To achieve internal consistency (invariants) of objects we should:
+\begin{enumerate}
+\item Apply information hiding.
+\item Make consistency criteria explicit, via the use of contracts, i.e. with invariants, history constraints, pre- and postconditions.
+\item Check that anything exposed by the interface, including those of possible subclasses, preserve consistency and prevent malicious clients from breaking consistency.
+\end{enumerate}
+
+In practice this means that invariants should only refer to \texttt{private} fields, since anything else can be set by a client.
+
+All this begs the question: what is an object structure?
+
+\section{Object Structures and Aliasing}
+
+\epigraph{\itshape I call it my billion-dollar mistake. It was the invention of the null reference in 1965.}{Tony Hoare}
+
+Single objects are the atomic building blocks of OOP. From these we can build more complex objects or \textit{object structures} when their classes have fields that are other objects.
+
+\begin{definition}[Object structure]
+A set of objects connected via references.
+\end{definition}
+
+\subsection{Aliasing}
+
+\begin{definition}[Aliasing]
+We say that an object $o$ is \textit{aliased} by the aliases $x$ and $y$ if they both hold references to $o$.
+That is
+$$ x \mapsto o \wedge y \mapsto o \wedge x \neq y $$
+An alias may be
+\begin{itemize}
+\item Local variables of methods, including \texttt{this}.
+\item Class fields (including static).
+\item Left expressions in general.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Capturing]
+A form of unintended aliasing where a reference gets stored in a data structure.
+Often this occurs in constructors.
+\end{definition}
+
+Aliases may be used to get around an object's boundary/interface.
+
+\begin{definition}[Leaking]
+Occurs when a data structure passes out or exposes a reference to some ostensibly internal object.
+This usually happens by mistake.
+Leaking can be exploited to bypass an object's boundary/interface.
+\end{definition}
+
+\subsection{Problems of Aliasing}
+
+\epigraph{\itshape The big lie of object-oriented programming is that
+objects provide encapsulation.}{John Hogg.}
+
+\begin{remark}
+If an interface has a method that accepts some object or object structure as an argument, and it captures that argument, its interface may be bypassed if the caller decides to mutate what was passed in.
+Just making fields private that represent the internal state of the callee does nothing.
+\end{remark}
+
+\begin{remark}
+If an interface has a method that returns an object, array, or reference part of its internal data structure this is leaking, and any client may modify this object and thus the internal state.
+\end{remark}
+
+Here's a list of some other specific issues with aliasing:
+\begin{itemize}
+\item When performing explicit memory management one needs to be sure that when one is freeing a pointer that there are no other aliases. This is the so-called \href{https://en.wikipedia.org/wiki/Dangling_pointer}{dangling pointer problem}.
+\item Compilers should not inline objects that are aliased.
+\end{itemize}
+
+\subsection{Unique References}
+
+\section{Initialization}
+
+\epigraph{\itshape Object-oriented programming had boldly promised ``to model the world." Well, the world is a scary place where bad things happen for no apparent reason, and in this narrow sense I concede that OO does model the world.}{Dave Fancher}
+
+bang is property of local variable.
+committed is property of object local var points to.
+
+\end{document}
