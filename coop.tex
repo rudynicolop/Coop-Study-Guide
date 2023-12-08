@@ -1702,6 +1702,27 @@ TODO: example of rust borrow checking, when a mutable reference may be created a
 
 \epigraph{\itshape Object-oriented programming had boldly promised ``to model the world." Well, the world is a scary place where bad things happen for no apparent reason, and in this narrow sense I concede that OO does model the world.}{Dave Fancher}
 
+\subsection{Simple Non-null Types}
+
+\cringe{} seems convenient.
+Programmers like to use \cringe{} to
+\begin{enumerate}
+\item Indicate the absence of a value. For example as a terminal node in a recursively defined type.
+\item Initialize fields by default.
+\end{enumerate}
+
+In other words:
+\begin{enumerate}
+\item The language doesn't have algebraic data types or the programmer chose not to use them.
+\item It's an object-oriented setting and the programmer was too lazy to write a constructor that initializes the fields.
+\end{enumerate}
+
+\cringe{} is cringe.
+Algebraic data types give you more expressiveness and safety.
+But some \textit{certain} languages (\textit{cough, cough} Java, C, C++, etc.) thought \cringe{} would be simpler to implement and program with.
+
+\vspace{1cm}
+
 bang is property of local variable.
 committed is property of object local var points to.
 
