@@ -462,7 +462,7 @@ This is each languages \textit{overloading resolution}.
 \label{fragile}
 In general any potentially overriden methods may cause problems. A subclass's behavior may be affected by changes to the superclass, and the way a subclass overrides a superclass may break the superclass's behavior. In particular:
 \begin{itemize}
-\item A superclass shoud not change calls to \dynamic{}ally bound methods.
+\item A superclass should not change calls to \dynamic{}ally bound methods.
 \item subclass's should \override{} any method that would otherwise break an invariant.
 \item A superclass should never call a \dynamic{}ally bound method in a constructor.
 \item Adding an overloading method to a superclass may affect the subclass (particularly in Java).
@@ -607,7 +607,7 @@ static boolean equals (Animal a1, Animal a2) {
 \end{example}
 
 \begin{example}[Multiple Dispatch]
-Some (experimental) languages support \textit{multipe dispatch}.
+Some (experimental) languages support \textit{multiple dispatch}.
 \begin{lstlisting}[language=Java]
 class Animal {
     boolean equals (Animal a) {
@@ -634,7 +634,7 @@ In \texttt{Cat}'s \texttt{equals}, the parameter \texttt{c} has \static{} type \
 A type may have several subtypes and (direct) supertypes.
 For instance, it makes sense to say $\subtype{Tabby}{Cat}$ and $\subtype{Tiger}{Cat}$, as well as $\subtype{Cat}{Animal}$ and that $\subtype{Cat}{Furball}$, where $Animal$ and $Furball$ are not necessarily related. Sometimes we would like to reuse code from several superclasses as well. In OOP, why not combine both into \textit{multiple inheritance}?
 
-\begin{remark}
+\begin{remark}\label{multipleinheritancejava}
 Java and C\# only support single inheritance but using aggregation may simulate single inheritance and interfaces.
 \end{remark}
 
@@ -658,11 +658,11 @@ If there is a constructor for $Top$ without arguments, this will be called first
 
 Scala has \textit{mixins} or \textit{traits} that may help specialize classes. Traits extend exactly one superclass and some number of traits. When mixing in a trait in a class declaration the class \textit{must} be a subclass of the direct superclass of each trait.
 
-\begin{remark}
+\begin{remark}\label{linearremark}
 $$forall ~ \text{classes} ~ C, \text{traits} ~ T ~ \text{s.t.} ~ T ~ extends ~ C, \subtype{T}{C}$$
 \end{remark}
 
-The dynamic dispatch order is determined by \textit{linerization}.
+The dynamic dispatch order is determined by \textit{linearization}.
 
 \begin{definition}[Linearization]
 $L$ determines the dispatch order.
@@ -696,12 +696,12 @@ A subclass only has one copy of a superclass in memory. In initialization each c
 
 The Java Virtual Machine (JVM) runs \textit{java bytecode}. In order to make some guarantees about some arbitrary bytecode loaded by a program, the bytecode must be typechecked.
 
-\begin{definition}[Java Virutal Machine]
+\begin{definition}[Java Virtual Machine]
 JVM is a stack-based language that consists of the following:
 \begin{itemize}
 \item A stack (duh). Operations push elements onto the stack and pop them off.
 \item A (potentially finite) set of registers. The first stores \texttt{this}, then method parameters, then local variables.
-\item A heap where objects are stored in memory. The stack and regiters may have pointers to the heap.
+\item A heap where objects are stored in memory. The stack and registers may have pointers to the heap.
 \end{itemize}
 \end{definition}
 
@@ -769,13 +769,13 @@ R'(r) = \tau}
 \label{fig:JVMjudge}
 \end{figure}
 
-\begin{remark}
+\begin{remark}\label{javaisdumb}
 Note that the rule for stores does not check that the previous type in the register is related. Thus bytecode typing allows strong updates, something not allowed in java source code.
 \end{remark}
 
 Instructions may have several predecessors because of jumps. Thus the \textit{smallest common supertype}, or \textit{join} $\sqcup$ needs to be selected.
 
-\begin{remark}
+\begin{remark}\label{interfacesaredumb}
 With multiple subtyping (such as with interfaces in Java) it may not be possible to calculate the join. A \runtimecheck{} is necessary for interface method invocation.
 \end{remark}
 
@@ -790,10 +790,10 @@ Thus we have:
 The dataflow equation we solve for is:
 
 \begin{equation}
-\wkin{p} = \bigsqcup \{ \wkout{q} \mid q ~ \text{predeces} ~ p \}
+\wkin{p} = \bigsqcup \{ \wkout{q} \mid q ~ \text{precedes} ~ p \}
 \end{equation}
 
-We want to take all of the precedessor instructions of $p$, take the joins of their types in their stacks and registers.
+We want to take all of the predecessor instructions of $p$, take the joins of their types in their stacks and registers.
 This join is exactly what we want to compute for $\wkin{p}$.
 
 To start out we want the stack to be empty, and the registers to contain the known parameter types $P_i$ and $\top$ for the local variables. The algorithm is given in \ref{alg:worklist}. Note that $\sqcup$ fails for different stack sizes.
@@ -898,7 +898,7 @@ When we are stuck with $\invar{}$ generics how do we write code that works with 
 In OOP (especially Java) this is an issue when what you want is ad-hoc polymorphic functionality for a supertype that works on subtypes, but since you don't have ad-hoc polymorphism you need to create another interface and class(es) that have their own subtype relations. Also you cannot pass functions as arguments in these languages in general so ... here's a convoluted example to motivate a kind of problem one may encounter.
 
 \begin{example}[Additional type parameters]
-Here we are going to try to demonstrate that Java forces one to twist themselves into a prezle if they just want to use standard type parameters.
+Here we are going to try to demonstrate that Java forces one to twist themselves into a pretzel if they just want to use standard type parameters.
 Suppose there's some \texttt{Comparator} interface and generic \texttt{TreeSet} class that represents a set implemented in a tree data structure.
 In order to search for elements it needs to compare elements in binary nodes of the tree.
 Thus it needs some way to have a \texttt{compare} function for its elements.
@@ -982,7 +982,7 @@ static List<?> id(List<?> l) {
 }
 \end{lstlisting}
 In the body of \texttt{id} the Java compiler is able to show $\exists E, \generic{List}{E}$, where \texttt{l} is a \textit{proof} of $\exists E, \generic{List}{E}$.
-However it does not know that the paramater type and return type are the same.
+However it does not know that the parameter type and return type are the same.
 \begin{lstlisting}[language=Java]
 List<String> l = id(new ArrayList < String > );
 \end{lstlisting}
@@ -1195,13 +1195,13 @@ $$\subtype{\generic{H}{\mathcal{I}}}{\generic{G}{\mathcal{I}}} \equiv \llbracket
 where $\mathcal{I}$ is either a type parameter or a wildcard bound.
 \end{definition}
 
-\begin{remark}
+\begin{remark}\label{javaisreallystupid}
 \href{https://arxiv.org/pdf/1605.05274.pdf}{Subtyping in Java is undecidable do to wildcards.}
 \end{remark}
 
 \subsubsection{Type Erasure}
 
-For backwards compatibility, Sun did not want to change the JVM after generics were introduced. So generic type information is erased by the compiler. $\generic{G}{T}$ becomes just $G$ in java bytecode. Occaisionally the compiler needs to insert casts to the class used for the type argument for instances of generic types. Because of this, Java disallows the following:
+For backwards compatibility, Sun did not want to change the JVM after generics were introduced. So generic type information is erased by the compiler. $\generic{G}{T}$ becomes just $G$ in java bytecode. Occasionally the compiler needs to insert casts to the class used for the type argument for instances of generic types. Because of this, Java disallows the following:
 \begin{itemize}
 \item Performing \texttt{instanceOf} on a generic instance type $\generic{G}{T}$.
 \item \texttt{.class} of a generic instance type.
@@ -1219,7 +1219,7 @@ class Erasure<S, T> {
 }
 \end{lstlisting}
 However C\# does allow this in general.
-If one chooses to instantiate \texttt{Erausre} with the same types any call to foo will be ambiguous and cause a typechecking error.
+If one chooses to instantiate \texttt{Erasure} with the same types any call to foo will be ambiguous and cause a typechecking error.
 \begin{lstlisting}[language={[Sharp]C}]
 Erasure<Object, Object> erasure = new Erasure<Object, Object>();
 erasure.foo(new Object()); // ambiguous!
@@ -1487,15 +1487,14 @@ Leaking can be exploited to bypass an object's boundary/interface.
 
 \subsection{Problems of Aliasing}
 
-\epigraph{\itshape The big lie of object-oriented programming is that
-objects provide encapsulation.}{John Hogg.}
+\epigraph{\itshape The big lie of object-oriented programming is that objects provide encapsulation.}{John Hogg.}
 
-\begin{remark}
+\begin{remark}\label{captures}
 If an interface has a method that accepts some object or object structure as an argument, and it captures that argument, its interface may be bypassed if the caller decides to mutate what was passed in.
 Just making fields private that represent the internal state of the callee does nothing.
 \end{remark}
 
-\begin{remark}
+\begin{remark}\label{leaks}
 If an interface has a method that returns an object, array, or reference part of its internal data structure this is leaking, and any client may modify this object and thus the internal state.
 \end{remark}
 
@@ -1506,6 +1505,141 @@ Here's a list of some other specific issues with aliasing:
 \end{itemize}
 
 \subsection{Unique References}
+
+For some data structures we would like to be sure there is no aliasing.
+Some languages/libraries provide some support for this with \textit{unique pointers}.
+C++ offers a library for unique pointers.
+Direct leaking is prevented by the omission of the copy constructor.
+Direct capturing is prevent by omission of the assignment operator.
+
+To pass unique pointers around in C++ one needs to explicitly \textit{move} them.
+Moving them prevents aliasing by rendering the old pointer unusable.
+Accessing the old pointer leads to undefined behavior, such as nontermination.
+
+Because unique pointers are in general not aliased, when they are deleted C++ deallocates the underlying objects as well.
+Because there are (in theory) no aliases one does not need to worry out the dangling pointer problem.
+
+\begin{example}[Direct leaking and capturing]
+  Consider the following code for an \texttt{Address} and \texttt{Person} class.
+\begin{lstlisting}[language=C++]
+class Address {
+    public:
+        std::string city;
+
+        Address (std::string city) {
+            this->city = city;
+        }
+    
+        std::string getCity() {
+            return this->city;
+        }
+}
+
+class Person {
+    std::unique_ptr<Address> addr;
+
+    std::unique_ptr<Address> getAddr() { return addr; }
+
+    void setAddr(std::unique_ptr<Address> a) { addr = a; } 
+}
+\end{lstlisting}
+
+  C++ forbids both \texttt{getAddr} and \texttt{setAddr}.
+  C++ rejects \texttt{getAddr} because \texttt{unique\_ptr} deletes the copy constructor, so a pointer cannot be copied out of the class.
+  This is good behavior because it prevents a client from aliasing \texttt{addr}, thus no leaking.
+  It rejects \texttt{setAddr} because \texttt{unique\_ptr} deletes the assignment operator, preventing the class from having an alias to some pointer the client passed in, thus preventing capturing.
+  To get C++ to accept \texttt{Person} we need to use the \texttt{move} operator.
+
+\begin{lstlisting}[language=C++]
+class Person {
+    std::unique_ptr<Address> addr;
+
+    std::unique_ptr<Address> getAddr() { return std::move(addr); }
+
+    void setAddr(std::unique_ptr<Address> a) { addr = std::move(a); } 
+}
+\end{lstlisting}
+  In \texttt{getAddr} the pointer in \texttt{addr} is moved out of the class and given to the client.
+  Attempting to read from \texttt{Person}'s \texttt{addr} will result in undefined behavior, probably nontermination.
+  In \texttt{setAddr} the pointer the client passes will be moved into the \texttt{addr} field, rendering it unusable to the client.
+\end{example}
+
+\begin{example}[Ownership transfer]
+  When a unique pointer is passed into a function it needs to be moved.
+  This means that the client will no longer be able to use it after the call.
+  Imagine that there is some compare function on unique pointers of addresses.
+\begin{lstlisting}[language=C++]
+int compare(std::unique_ptr<Address> x, std::unique_ptr<Address> y) { ... }
+\end{lstlisting}
+  Say some client code would like to compare two addresses and do something with them afterwards.
+\begin{lstlisting}[language=C++]
+auto x = std::make_unique<Address>("Hagen");
+auto y = std::make_unique<Address>("Zurich");
+int  c = compare(std::move(x), std::move(y));
+auto small_address = c < 0 ? std::move(x) : std::move(y); // C++ mad
+\end{lstlisting}
+  We would've liked to use \texttt{compare} to figure out the smaller address, but since both \texttt{x} and \texttt{y} were moved into \texttt{compare} the client can no longer access them.
+  We could imagine some alternative \texttt{compare} that returns \texttt{x} and \texttt{y} in addition to the \texttt{int}.
+\begin{lstlisting}[language=C++]
+std::tuple<int, std::unique_ptr<Address>, std::unique_ptr<Address>>
+compare(std::unique_ptr<Address> x, std::unique_ptr<Address> y) { ... }
+\end{lstlisting}
+  And then use this in the client:
+\begin{lstlisting}[language=C++]
+auto x = std::make_unique<Address>("Los Angeles");
+auto y = std::make_unique<Address>("Reno");
+auto t = compare(std::move(x), std::move(y));
+int  c = std::get<0>(t);
+x = std::move(get<1>(t));
+y = std::move(get<2>(t));
+auto small_address = c < 0 ? std::move(x) : std::move(y);
+\end{lstlisting}
+  C++ accepts this.
+  However \texttt{x} and \texttt{y} are moved when we assign \texttt{small\_address}.
+  We've merely kicked the problem down the road.
+  One could imagine programming in this style but C++ offers another solution.
+  Compare could take a pointer to the unique pointer.
+  \begin{lstlisting}[language=C++]
+int compare(std::unique_ptr<Address> *x, std::unique_ptr<Address> *y) { ... }
+\end{lstlisting}
+  Now the client will pass \texttt{x} and \texttt{y} as references into \textt{compare}.
+\begin{lstlisting}[language=C++]
+auto x = std::make_unique<Address>("Tokyo");
+auto y = std::make_unique<Address>("Cairo");
+int  c = compare(&x, &y);
+auto small_address = c < 0 ? std::move(x) : std::move(y); // C++ mad
+\end{lstlisting}
+\end{example}
+
+C++ allows one to create an alias to the data in a unique pointer with a \texttt{get} method.
+Obviously this causes problems.
+
+\begin{example}[Dangling unique pointer]
+  One can create a dangling pointer using \texttt{get}.
+  Imagine there is some method that returns \texttt{get} on a newly created unique address.
+\begin{lstlisting}[language=C++]
+Address* make_addr() {
+    auto addr = std::make_unique<Address>("Zurich");
+    return addr.get();
+}
+\end{lstlisting}
+  And we have a client that tries to call \texttt{getCity} on the result.
+\begin{lstlisting}[language=C++]
+std::cout << make_addr()->getCity() << std::endl;
+\end{lstlisting}
+  Since C++ deletes the data \texttt{addr} points to in \texttt{make\_addr}, calling \texttt{getCity} on the result is undefined behavior.
+\end{example}
+
+\begin{example}[Aliasing unique pointers]
+  Other than \texttt{get}, one can alias a unique pointer by constructing one with previously existing data.
+\begin{lstlisting}[language=C++]
+Address peter_address = new Address("Zurich");
+std::unique_ptr<Address> alias(peter_address);
+alias->city = "Hagen";
+std::cout << peter_address->getCity() << std::endl;
+\end{lstlisting}
+  We have sent someone to Hagen, which is the worst thing that could happen.
+\end{example}
 
 \section{Initialization}
 

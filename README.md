@@ -6,9 +6,9 @@ The material in this study guide was taken from the [course lecture slides by Pe
 
 ## Further Resources
 
-More on OOP:
-
 - [Criticism of OOP](https://www.youtube.com/watch?v=QM1iUe6IofM)
+
+- [Ownership in Rust](https://cognitive-engineering-lab.github.io/aquascope/)
 
 - [More criticism](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
 
