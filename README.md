@@ -8,6 +8,8 @@ The material in this study guide was taken from the [course lecture slides by Pe
 
 - [Criticism of OOP](https://www.youtube.com/watch?v=QM1iUe6IofM)
 
+- [Java bytecode specification](https://www.coley.software/Recaf-documentation/use-bytecode-list.html)
+
 - [Ownership in Rust](https://cognitive-engineering-lab.github.io/aquascope/)
 
 - [More criticism](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
@@ -24,6 +26,6 @@ The material in this study guide was taken from the [course lecture slides by Pe
 
 - Clean up generic instance set notation.
 
-- Finish Aliasing
+- Better rust and lifetime examples
 
 - Finish Initialization

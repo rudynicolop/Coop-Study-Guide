@@ -1508,6 +1508,9 @@ Here's a list of some other specific issues with aliasing:
 
 For some data structures we would like to be sure there is no aliasing.
 Some languages/libraries provide some support for this with \textit{unique pointers}.
+
+\subsubsection{C++ Unique Pointers}
+
 C++ offers a library for unique pointers.
 Direct leaking is prevented by the omission of the copy constructor.
 Direct capturing is prevent by omission of the assignment operator.
@@ -1640,6 +1643,60 @@ std::cout << peter_address->getCity() << std::endl;
 \end{lstlisting}
   We have sent someone to Hagen, which is the worst thing that could happen.
 \end{example}
+
+Furthermore, unique pointers in C++ are shallow.
+One may easily alias any inner objects or pointers.
+To get deep ownership one needs to make all fields unique pointers recursively.
+
+\subsubsection{Rust Ownership}
+
+Rust's type system enforces ownership.
+Moves occur implicitly because all assignments are moves.
+When one tries to read from a moved value, instead of undefined behavior at \runtime{}, the typechecker rejects the program.
+Ownership in Rust is deep.
+In Rust the \texttt{Box} type allows one to have deeply owning pointers to memory: a better version of \texttt{unique\_ptr}.
+
+One can transfer values back and force in Rust like in C++, but it is more idiomatic pass by reference.
+This is called \textit{borrowing}.
+Borrowing creates a temporary alias.
+These aliases come with more restrictions.
+Read-only references \texttt{\& T} may be shared and have many aliases but cannot be written to.
+Mutable references \texttt{\&mut T} may be written to but there may only be one.
+Rust's borrow checker analyzes the program syntax and determines the availability of references, or \textit{lifetimes}.
+A reference's lifetime is the span of program syntax from when it is born into this world and when it is last used.
+Leaking is possible in Rust if a function returns a mutable reference.
+However capturing is safe because the capturing data structure owns the captured value.
+
+\begin{remark}\label{rustcoolmem}
+  Rust can safely deallocate memory of variables at the end of their scope because of the uniqueness of ownership.
+\end{remark}
+
+\begin{remark}\label{rusttree}
+  In safe Rust it is not possible to construct cyclic data structures.
+\end{remark}
+
+\subsection{Read-only References}
+
+In stateful programming aliases require much less memory overhead than deep-copying data structures.
+So despite their many drawbacks we would like to use aliases, but with much better safety guarantees.
+Intuitively we can avoid many of the problems with aliases if we require that they are \textit{read-only}.
+We would like to have the following properties for read-only references.
+\begin{itemize}
+\item Distinguish between clients that may mutate data via a reference verses those who may not. The data itself isn't read-only, the references to it are.
+\item Effectively prevent clients from modifying some state.
+\item We would like read-only access to extend to fields of data, that is we would like \textit{transitivity}.
+\end{itemize}
+
+Rust's read-only references satisfy these properties.
+
+C++ supports \texttt{const} pointers.
+On the surface they are read-only.
+However inner fields may be updated, and they may be cast to non-constant pointers.
+
+C++ also supports \texttt{const} methods that may not modify their receiver object.
+Question: Can const methods update fields within const fields?
+
+TODO: example of rust borrow checking, when a mutable reference may be created after an immutable reference is no longer used.
 
 \section{Initialization}
 
