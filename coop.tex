@@ -13,10 +13,10 @@
     linktoc=all,     %set to all if you want both sections and subsections linked
     linkcolor=blue,  %choose some color if you want links to stand out
 }
-\usepackage{epigraph}
-
+% \usepackage{multirow}
 \usepackage{macros}
 
+\usepackage{epigraph}
 \setlength\epigraphwidth{.8\textwidth}
 \setlength\epigraphrule{0pt}
 
@@ -1728,7 +1728,7 @@ $\nonnull{T}$ denotes references to $T$ objects.
 $\nulltyp{T}$ denotes references to $T$ objects \textit{or} \cringe{}.
 $$ values(\nulltyp{T}) = \{ \cringe{} \} \cup values(\nonnull{T}) $$
 
-\begin{definition}[Type safety invariant]\label{def:nulltypesafeinv}
+\begin{definition}[Type safety invariant]\label{definition:nulltypesafeinv}
   We would like to \static{}ally  guarantee:
   $$\forall e, v, T, e : \nonnull{T} \rightarrow e \downarrow v \rightarrow v \neq \cringe{}$$
   We would like to prevent \cringe{} dereferencing at \compiletime{} (while still having \cringe{} in the language).
@@ -1800,7 +1800,7 @@ public Object? get (Object! key) {
 
 \subsection{Object Initialization}
 
-Constructing new objects poses many challenges when attempting to guarantee \ref{def:nulltypesafeinv}.
+Constructing new objects poses many challenges when attempting to guarantee \ref{definition:nulltypesafeinv}.
 Consider:
 \begin{itemize}
 \item We need to ensure that non-\cringe{} fields are initialized to a non-\cringe{} value when the constructor has completed.
@@ -1811,7 +1811,7 @@ Remember that in general it is okay for invariants to be violated in the middle 
 This may pose a problem especially in concurrent settings.
 
 \begin{definition}[Definite assignment rule]
-  \label{def:defassrule}
+  \label{definition:defassrule}
   Every local variable must assigned to prior to its first use, particularly as a \receiver{}.
   For object types this is especially important to prevent \cringe{}-dereferencing.
   This may be checked by a dataflow analysis and during bytecode verification.
@@ -1821,7 +1821,7 @@ This may pose a problem especially in concurrent settings.
   Languages such as Java and C\# do not initialize declared variables, but do let you use them.
 \end{remark}
 
-We would like to extend {def:defassrule} to fields as well, but this is difficult to enforce in constructors.
+We would like to extend {definition:defassrule} to fields as well, but this is difficult to enforce in constructors.
 Especially because subobjects will implicitly or explicitly invoke the superobjects constructor during their constructor.
 
 \begin{example}[Dynamically-bound problems.]
@@ -1977,9 +1977,319 @@ class Subject extends Thread {
   \end{enumerate}
 \end{example}
 
-\vspace{1cm}
+\begin{example}[Concurrent woes continued]
+  Okay.
+  I give up.
+  I will not make \textit{any} method calls during a constructor at all.
+  Here's an \textit{innocent} class with a cycle of processes.
+\begin{lstlisting}[language=Java]
+class Cycle {
+    Cycle! next;
+    Process! proc;
 
-bang is property of local variable.
-committed is property of object local var points to.
+    Cycle (Process! p) {
+        this.next = this;
+        this.proc = p;
+    }
+
+    Cycle (Cycle! neighbor, Process! p) {
+         this.next = neighbor.next;
+         neighbor.next = this;
+         this.proc = p;
+    }
+}
+\end{lstlisting}
+  Imagine we have some scheduler that goes through a cycle.
+\begin{lstlisting}[language=Java]
+class Scheduler extends Thread {
+    Cycle! current;
+
+    Scheduler (Cycle! cycle) {
+        this.current = cycle;
+    }
+
+    void run () {
+        while (true) {
+            this.current.proc.preempt();
+            this.current = this.current.next;
+            this.current.proc.resume();
+            Thread.sleep(1000);
+        }
+    }
+}
+\end{lstlisting}
+  Say we have some client code that creates process cycle for a scheduler, runs the scheduler, then decides to add another process to the cycle.
+\begin{lstlisting}[language=Java]
+Process! eat   = new Process(...);
+Process! poop  = new Process(...);
+Process! sleep = new Process(...);
+
+Cycle! eats    = new Cycle(eat);
+Cycle! poops   = new Cycle(eats, poop);
+Cycle! sleeps  = new Cycle(poops, sleep);
+
+Scheduler dailySchedule = new Scheduler(eats);
+
+// Spawn a new thread, calls dailySchedule.run()
+dailySchedule.spawn();
+
+Process! game  = new Process(...);
+
+Cycle! games   = new Cycle(eats, game);
+\end{lstlisting}
+  Here we create a daily scheduling that includes eating, pooping, and sleeping.
+  Later we decide to add gaming to our schedule.
+  This will be totally okay, right...?
+  Imagine the following execution:
+  \begin{enumerate}
+  \item The \texttt{eat}, \texttt{poop}, and \texttt{sleep} processes are initialized without issue.
+  \item These processes are used to create a daily schedule \texttt{dailySchedule}, that first eats, poops, sleeps, eats, etc.
+  \item A new thread is spawned that runs the scheduler.
+  \item We decide to add a new process \texttt{game} for gaming to our cycle after eating and before pooping.
+  \item In the constructor for \texttt{Cycle} \texttt{eats} is passed for \texttt{neighbor} and \texttt{game} is passed for \texttt{proc}.
+  \item \texttt{this.next} is assigned to \texttt{eats.next} which is \texttt{poops}.
+  \item \texttt{neighbor.next}, which is \texttt{eats.next}, is assigned to \texttt{this}.
+  \item Uh-oh, we've been preempted by the scheduler!
+  \item For \texttt{dailySchedule.run}, at the moment of preemption \texttt{this.current} was set to \texttt{eats}.
+  \item Now \texttt{eats.next}, which is our object under construction, becomes \texttt{this.current}.
+  \item \texttt{this.current.proc.resume()} is invoked.
+  \item \texttt{this.current.proc} is the \texttt{proc} field for our object under construction, which has not yet been assigned and is still \cringe{}!
+  \item A \cringe{}-pointer exception is thrown!
+  \end{enumerate}
+\end{example}
+
+Currently our type system for non-\cringe{} types is not powerful enough to \static{}ally guarantee that no \cringe{}-pointer exceptions occur when a class field of a partially-initialized object escapes from its constructor.
+
+It \textit{cannot} ensure that during initialization that uninitialized fields are not used a \receiver{}s when
+\begin{itemize}
+\item The object under construction calls a dynamically-bound method.
+\item The object under construction passes itself or one of its uninitialized fields into another function that calls a dynamically-bound method.
+\item The object under construction or one of its uninitialized fields is stored in some data structure that concurrently that is available to another thread.
+\end{itemize}
+
+We may be able to solve this problem by prevent constructors from making dynamically bound calls, passing itself or any of its uninitialized fields into another function call, and synchronizing constructors.
+However this is much less expressive and \dynamic{}ally has more overhead.
+We would like to adopt a more fine-grained approach.
+To do this we need to consider the initialization phases for an object.
+
+When a constructor is invoked, we can consider the following stages:
+\begin{enumerate}
+\item When \texttt{new} is invoked the object now exists any may be used, even though it has not yet been initialized!
+\item At some point during the initialization process all of the object's fields become initialized.
+\item The constructor call has completed execution.
+\end{enumerate}
+
+Before step 1 the object cannot be used because it does not yet exist.
+Between steps 1 and 2 we cannot make any assumptions about the \cringe{}ness of the object's fields but the object and its fields may be accessed.
+After step 2 we know that all of the object's non-\cringe{} fields are not \cringe{}.
+
+We would like our type system to work based on understanding which stage the object's construction is at.
+For our purposes the second step is too fine-grained so we may simply consider that
+
+\begin{enumerate}
+\item When \texttt{new} is invoked the object now exists any may be used, even though it has not yet been initialized!
+\item The constructor call has completed execution and all of its fields are initialized.
+\end{enumerate}
+
+Between steps 1 and 2 the object and its fields occupy some nether state where they may be accessed but we know nothing about their \cringe{}ness.
+I.e. for some field $this.f : \nonnull{T}$, $this.f$ may actually be \cringe{} even though its type says otherwise.
+Our type system needs to be expressive enough to reason about the fact that \ref{definition:nulltypesafeinv} may be temporally violated within a call to a constructor.
+Thus the type $\nonnull{T}$ on its own cannot express this.
+Thus we need to introduce types for different stages of object construction.
+We call these \textit{construction types}.
+\begin{itemize}
+\item Free types $\freetyp{T}$ represents values of type $T$ during object constructions, in particular for uninitialized fields.
+\item Committed types $\committed{T}$ represents values of type $T$ after an object constructor has completed execution.
+\item Unclassified types $\unctyp{T}$ represents values of type $T$ that may be either free or committed.
+\end{itemize}
+
+Note that $\committed{\nulltype{T}}$ is allowable, it just expresses fully initialized values of $T$ that may be \cringe{}.
+In general we take that $\committed{T}$ is synonymous with $T$.
+
+We may introduce the following subtyping rules.
+\begin{mathpar}
+  \inferrule
+  { }
+  {\subtype{\nonnull{T}}{\unctyp{\nonnull{T}}}}
+
+  \inferrule
+  { }
+  {\subtype{\nulltyp{T}}{\unctyp{\nulltyp{T}}}}
+\end{mathpar}
+
+Note that we must ban casts from unclassified types to free and committed types.
+
+Our new type systems needs certain requirements.
+
+\begin{definition}[Local initialization]\label{definition:localinit}
+  We say that an object is \textit{locally initialized} if and only if its non-\cringe{} fields are not \cringe{}.
+  If the \static{} type of a term is committed then its value at \runtime{} is locally initialized.
+  \begin{table}[h]
+    \centering
+  \begin{tabular}{| c | c | c |}
+    \hline
+    construction & ! & ? \\
+    \hline
+    committed & ! & ? \\
+    \hline
+    free & ? & ? \\
+    \hline
+    unclassified & ? & ? \\
+    \hline
+  \end{tabular}
+  \caption{Possible \cringe{} reads for each combination of (non-) \cringe{} and construction types.}
+  \label{table:constrlocal}
+\end{table}
+See \ref{table:constrlocal} for the possibilities for \cringe{} reads of a field of some term.
+$$\text{locally\_initialized}(o) = \Gamma \vdash o : \committed{\nonnull{T}} \rightarrow \forall f : \nonnull{T} \in fields(A) \rightarrow o.f \neq \cringe{}$$
+Local initialization is a \textit{partial} property.
+\end{definition}
+
+\begin{definition}[Transitive initialization]\label{definition:transinit}
+  We say that an object is \textit{transitively initialized} if all reachable objects from its fields satisfy \ref{definition:localinit}.
+  We would like to guarantee that if a term's \static{} type is committed then its value at \runtime{} is transitively initialized.
+  \begin{mathpar}
+    \inferrule
+    { \text{locally\_initialized}(o) \\
+      \forall f \in fields(o) \rightarrow \text{transitively\_initialized}(o.f)}
+    {\text{transitively\_initialized}(o)}
+  \end{mathpar}
+  Transitive initialization may be considered to be a property that holds for an \textit{entire} object.
+  A committed object is transitively initialized.
+\end{definition}
+
+\begin{definition}[Typing field writes]
+  \label{definition:fieldwritetype}
+  We may type field writes as:
+  \begin{mathpar}
+    \inferrule
+    { \Gamma \vdash e_1 : C_1 ~ \nonnull{A} \\
+      \Gamma \vdash e_2 : C_2 ~ S \\
+      f : T \in fields(A) \\
+      \subtype{S}{T} \\
+      C_1 = \texttt{free} \vee C_2 = \texttt{com}
+    }
+    {\Gamma \vdash e_1.f = e_2 : unit }
+  \end{mathpar}
+  \begin{table}[h]
+    \centering
+    \begin{tabular}{| c | c | c | c |}
+      \hline
+      & $\Gamma \vdash e_2 : \committed{S}$ & $\Gamma \vdash e_2 : \freetyp{S}$ & $\Gamma \vdash e_2 : \unctyp{S}$ \\
+      \hline
+      $\Gamma \vdash e_1 : \committed{\nonnull{A}}$ & Ok & NO & NO \\
+      \hline
+      $\Gamma \vdash e_1 : \freetyp{\nonnull{A}}$ & Ok & Ok & Ok \\
+      \hline
+      $\Gamma \vdash e_1 : \unctyp{\nonnull{A}}$ & Ok & NO & NO \\
+      \hline
+    \end{tabular}
+    \caption{$C_1 = \texttt{free} \vee C_2 = \texttt{com}$}
+    \label{table:constrfieldwrite}
+  \end{table}
+  The condition  $C_1 = \texttt{free} \vee C_2 = \texttt{com}$ is depicted for all combinations of construction types in \ref{table:constrfieldwrite}.
+\end{definition}
+
+\begin{definition}[Typing field reads]
+  we may type field reads as:
+  \begin{mathpar}
+    \inferrule
+    { \Gamma \vdash e : C ~ \nonnull{A} \\
+      f : T \in fields(A) }
+    {\Gamma \vdash e.f : \mathcal{F}(C, T)}
+  \end{mathpar}
+  Where $\mathcal{F}$ is defined as:
+  \begin{align*}
+    \mathcal{F}(\texttt{com}, \nonnull{T}) &= \committed{\nonnull{T}} \\
+    \mathcal{F}(\texttt{com}, \nulltyp{T}) &= \committed{\nulltyp{T}} \\
+    \mathcal{F}(\texttt{free}, T \_) &= \unctyp{\nulltyp{T}}  \\
+    \mathcal{F}(\texttt{unc}, T \_) &=  \unctyp{\nulltyp{T}}
+  \end{align*}
+  \begin{table}[h]
+    \centering
+    \begin{tabular}{| c | c | c |}
+      \hline
+      & $f : \nonnull{T} \in fields(A)$ & $f : \nulltyp{T} \in fields(A)$ \\
+      \hline
+      $\Gamma \vdash e : \committed{\nonnull{A}}$ & $\Gamma \vdash e.f : \committed{\nonnull{T}}$ & $\Gamma \vdash e.f : \committed{\nulltyp{T}}$ \\
+      \hline
+      $\Gamma \vdash e : \freetyp{\nonnull{A}}$ & $\Gamma \vdash e.f : \unctyp{\nulltyp{T}}$ & $\Gamma \vdash e.f : \unctyp{\nulltyp{T}}$ \\
+      \hline
+      $\Gamma \vdash e : \unctyp{\nonnull{A}}$ & $\Gamma \vdash e.f : \unctyp{\nulltyp{T}}$ & $\Gamma \vdash e.f : \unctyp{\nulltyp{T}}$ \\
+      \hline
+    \end{tabular}
+    \caption{$\mathcal{F}$ as a table.}
+    \label{table:constrfieldread}
+  \end{table}
+  $\mathcal{F}$ may be expressed as \ref{table:constrfieldread}.
+  At first glance it may seem like a type $\committed{\nulltyp{T}}$ is a paradox: does such a type violate \ref{definition:transinit}?
+  Such a type is actually okay because it is all right for a committed non-\cringe{} type to have a \cringe{} field.
+  The idea is that a type being non-\cringe{} is a property of a local variable, and it being committed is a property of the object that a local variable points to.
+\end{definition}
+
+\begin{definition}[Typing constructor declarations]
+  When we type the body of a constructor, we assume that \texttt{this} has a free, non-\cringe type.
+  By the end non-\cringe{} values must be assigned to non-\cringe{} fields.
+\end{definition}
+
+\begin{definition}[Typing method calls]
+  The \receiver{} of a method call must be non-\cringe{}.
+\end{definition}
+
+How do we know when construction is complete?
+Naively we would say that construction is complete at the end of a call to a constructor.
+However this is not true in general: a subobject could just have finished calling \texttt{super()} but still has more to do.
+Knowing if object construction is complete is generally \textit{non-modular}.
+
+We might say that construction is complete when the \texttt{new} expression terminates.
+However this is only valid for \textit{surface} calls to \texttt{new}.
+In other words, a constructor may call \texttt{new} within its declaration.
+This is particularly a problem if such a call to \texttt{new} contains terms that are free, such as \texttt{this}.
+In general objects created with \texttt{new} do not satisfy \ref{definition:transinit} when done.
+However they should always satisfy \ref{definition:localinit} when done.
+
+\begin{remark}\label{remark:constrstrongupdate}
+  At the end of a call to \texttt{new} fields will have a strong update to their types to become committed.
+\end{remark}
+
+We must require surface-level \texttt{new} expressions to only take committed arguments.
+This is because assigning \texttt{this}'s fields to under-initialized arguments, i.e. not initialized or merely those that satisfy \ref{definition:localinit} is banned because there is no way that they will become committed or satisfy \ref{definition:transinit} by the end of construction.
+However we will allow \texttt{new} expressions invoked in constructors to take arguments of any construction type.
+
+Thus we may make the following observations about what type of arguments \texttt{new} expressions may or may not allow.
+First concerning surface-level calls to \texttt{new}:
+\begin{itemize}
+\item The \texttt{this} under construction may only be given committed arguments to assign to fields. I.e, all arguments must satisfy \ref{definition:transinit}.
+\item Any committed argument may not have a field assigned to \texttt{this}. This would violate \ref{definition:fieldwritetype} and the argument would no longer satisfy \ref{definition:transinit}.
+\item An argument merely satisfying \ref{definition:localinit} is banned because it is not fully committed. Furthermore updating any of its fields to \texttt{this} is also forbidden because it would no longer satisfy \ref{definition:localinit}.
+\item An argument that is uninitialized is forbidden because it is not fully committed.
+\end{itemize}
+
+Not let us consider nested calls to \texttt{new}.
+\begin{itemize}
+\item The inner \texttt{this} under construction may not have any of its fields assigned to \textit{external} under-initialized values, as there would be no way to ensure that the final object satisfies \ref{definition:transinit}.
+\item The inner \texttt{this} may have some of its fields assigned to the surface-level \texttt{this}, even though both are free.
+\item Once the inner \texttt{this} has completed its own construction, it satisfies \ref{definition:localinit}.
+\item The outer \texttt{this} may assign one of its fields to the result of the inner \texttt{new}.
+\item Once all of the inner \texttt{this}'s fields have been assigned, it satisfies \ref{definition:localinit}.
+\item Observe that all of these \texttt{new} objects when done only refer to objects that satisfy \ref{definition:transinit}, or each other, which satisfy \ref{definition:localinit}.
+\end{itemize}
+
+Thus at the end of surface-level constructor call the constructed object will satisfy \ref{definition:transinit}.
+
+\begin{definition}[Typing \texttt{new} expressions]
+  \begin{mathpar}
+    \inferrule
+    { \forall i, \Gamma \vdash e_i : C_i ~ S_i \\
+      constructor(A) : C'_i T_i \rightarrow \nonnull{A} \\
+      \forall i, \subtype{C_i ~ S_i}{C'_i ~ T_i} \\
+      ((\forall i, C_i = \texttt{com}) \rightarrow C = \texttt{com}) \vee C = \texttt{free}
+    }
+    {\Gamma \vdash \texttt{new} ~ A(e_i) : C ~ \nonnull{A}}
+  \end{mathpar}
+\end{definition}
+
+Now in general methods need to be annotated with \texttt{free} to invoke them during construction.
+Such methods may not use \texttt{this} as a \receiver{}.
 
 \end{document}
