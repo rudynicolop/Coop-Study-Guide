@@ -2174,14 +2174,23 @@ We may introduce the following subtyping rules.
 \begin{mathpar}
   \inferrule
   { }
-  {\subtype{\nonnull{T}}{\unctyp{\nonnull{T}}}}
+  {\subtype{\committed{\nonnull{T}}}{\unctyp{\nonnull{T}}}}
 
   \inferrule
   { }
-  {\subtype{\nulltyp{T}}{\unctyp{\nulltyp{T}}}}
+  {\subtype{\freetyp{\nonnull{T}}}{\unctyp{\nonnull{T}}}}
+
+  \inferrule
+  { }
+  {\subtype{\committed{\nulltyp{T}}}{\unctyp{\nulltyp{T}}}}
+
+  \inferrule
+  { }
+  {\subtype{\freetyp{\nulltyp{T}}}{\unctyp{\nulltyp{T}}}}
 \end{mathpar}
 
 Note that we must ban casts from unclassified types to free and committed types.
+Question: but why? What role do unclassified types have anyway?
 
 Our new type systems needs certain requirements.
 
