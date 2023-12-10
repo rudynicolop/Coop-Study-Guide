@@ -117,6 +117,35 @@ String foo(Object o){
     Subtype objects may be used wherever supertype objects are expected.
 \end{definition}
 
+In languages such as Java and C\# we say a type is a subtype of another if it satisfies the rules \ref{fig:basicsubtype}.
+\begin{figure}
+\begin{mathpar}
+  \boxed{\subtype{S}{T}}
+  
+  \inferrule
+  {S ~ \text{extends} ~ T}
+  {\subtype{S}{T}}
+
+  \inferrule
+  {S ~ \text{implements} ~ T}
+  {\subtype{S}{T}}
+
+  \inferrule
+  { }
+  {\subtype{T}{\top}}
+  
+  \inferrule
+  { }
+  {\subtype{T}{T}}
+
+  \inferrule
+  {\subtype{R}{S} \\ \subtype{S}{T}}
+  {\subtype{R}{T}}
+\end{mathpar}
+\caption{Basic subtyping rules}
+\label{fig:basicsubtype}
+\end{figure}
+
 \begin{definition}[\syntactic{} Subtyping]
 Subtype \receiver{}s $S$ understand the messages of supertype \receiver{}s $T$.
 \begin{equation}
@@ -634,7 +663,7 @@ In \texttt{Cat}'s \texttt{equals}, the parameter \texttt{c} has \static{} type \
 A type may have several subtypes and (direct) supertypes.
 For instance, it makes sense to say $\subtype{Tabby}{Cat}$ and $\subtype{Tiger}{Cat}$, as well as $\subtype{Cat}{Animal}$ and that $\subtype{Cat}{Furball}$, where $Animal$ and $Furball$ are not necessarily related. Sometimes we would like to reuse code from several superclasses as well. In OOP, why not combine both into \textit{multiple inheritance}?
 
-\begin{remark}\label{multipleinheritancejava}
+\begin{remark}\label{remark:multipleinheritancejava}
 Java and C\# only support single inheritance but using aggregation may simulate single inheritance and interfaces.
 \end{remark}
 
@@ -658,7 +687,7 @@ If there is a constructor for $Top$ without arguments, this will be called first
 
 Scala has \textit{mixins} or \textit{traits} that may help specialize classes. Traits extend exactly one superclass and some number of traits. When mixing in a trait in a class declaration the class \textit{must} be a subclass of the direct superclass of each trait.
 
-\begin{remark}\label{linearremark}
+\begin{remark}\label{remark:linearremark}
 $$forall ~ \text{classes} ~ C, \text{traits} ~ T ~ \text{s.t.} ~ T ~ extends ~ C, \subtype{T}{C}$$
 \end{remark}
 
@@ -714,8 +743,10 @@ $\begin{array}{r c l l}
 & \mid & \load{\tau}{r} & \text{push value in register $r$ onto the stack} \\
 & \mid & \store{\tau}{r} & \text{pop top value from stack into register $r$} \\
 & \mid & \op{\otimes} & \text{pop top 2 values $v_1, v_2$ from stack and push $v_1 \otimes v_2$} \\
-& \mid & \invoke{C}{m}{\tau_r (\tau_1, ..., \tau_n)} & \text{pop args $v_n, ..., v_1$ \receiver{} $v$ then push $C.m.v(v_1,...,v_n)$}  \\
+& \mid & \invokev{C}{m}{\tau_r (\tau_1, ..., \tau_n)} & \text{pop args $v_n, ..., v_1$ \receiver{} $v$ then push $C.m.v(v_1,...,v_n)$}  \\
+& | & \invokei{I}{m}{\tau_r (\tau_1, ..., \tau_n)} & \text{pop args $v_n, ..., v_1$ \receiver{} $v$ then push $I.m.v(v_1,...,v_n)$}  \\
 & \mid & \return{\tau} & \text{pop $v$ and method return $v$} \\
+& | & \ifeq{l} & \text{pop $v$ and jump to $l$ if $v = 0$} \\
 & \mid & \goto{l} & \text{jump to program line $l$}
 \end{array}$
 \caption{JVM instructions}
@@ -755,11 +786,22 @@ R'(r) = \tau}
 \subtype{\tau'}{C} \\
 \subtype{\tau_1'}{\tau_1} ~ ... ~ \subtype{\tau_n'}{\tau_n} \\
 }
-{\judge{MS}{\invoke{C}{m}{\tau_r (\tau_1, ..., \tau_n)}}{\tau_n'...\tau_1'.\tau'.S}{R}{\tau_r.S}{R}} \\
+{\judge{MS}{\invokev{C}{m}{\tau_r (\tau_1, ..., \tau_n)}}{\tau_n'...\tau_1'.\tau'.S}{R}{\tau_r.S}{R}} \\
+
+\inferrule
+{n + |S| < MS \\
+\subtype{\tau'}{Object} \\
+\subtype{\tau_1'}{\tau_1} ~ ... ~ \subtype{\tau_n'}{\tau_n} \\
+}
+{\judge{MS}{\invokei{I}{m}{\tau_r (\tau_1, ..., \tau_n)}}{\tau_n'...\tau_1'.\tau'.S}{R}{\tau_r.S}{R}} \\
 
 \inferrule
 { }
-{\judge{MS}{\goto{}}{S}{R}{S}{R}}
+{\judge{MS}{\ifeq{l}}{\texttt{int}.S}{R}{S}{R}}
+
+\inferrule
+{ }
+{\judge{MS}{\goto{l}}{S}{R}{S}{R}}
 
 \inferrule
 {\subtype{\tau'}{\tau}}
@@ -769,14 +811,15 @@ R'(r) = \tau}
 \label{fig:JVMjudge}
 \end{figure}
 
-\begin{remark}\label{javaisdumb}
+\begin{remark}\label{remark:javaisdumb}
 Note that the rule for stores does not check that the previous type in the register is related. Thus bytecode typing allows strong updates, something not allowed in java source code.
 \end{remark}
 
 Instructions may have several predecessors because of jumps. Thus the \textit{smallest common supertype}, or \textit{join} $\sqcup$ needs to be selected.
 
-\begin{remark}\label{interfacesaredumb}
-With multiple subtyping (such as with interfaces in Java) it may not be possible to calculate the join. A \runtimecheck{} is necessary for interface method invocation.
+\begin{remark}\label{remark:interfacesaredumb}
+  With multiple subtyping (such as with interfaces in Java) it may not be possible to calculate the join. A \runtimecheck{} is necessary for interface method invocation.
+  This is why the rule for \texttt{invokeinterface} does not check that the expected type on the static satisfies the interface, only that it is a Object.
 \end{remark}
 
 (Old) Java needed to perform type inference on bytecode. Because joins need to be computed, a \textit{worklist algorithm} is necessary.
@@ -1191,11 +1234,32 @@ TODO: define this better or remove.
 
 \begin{definition}[Subtyping generics]
 Given generic types $H$ and $G$, we say that:
-$$\subtype{\generic{H}{\mathcal{I}}}{\generic{G}{\mathcal{I}}} \equiv \llbracket \generic{H}{\mathcal{I}} \rrbracket \subseteq \llbracket \generic{G}{\mathcal{I}} \rrbracket $$
+$$\subtype{\generic{H}{\mathcal{I}_1}}{\generic{G}{\mathcal{I}_2}} \equiv \llbracket \generic{H}{\mathcal{I}_1} \rrbracket \subseteq \llbracket \generic{G}{\mathcal{I}_2} \rrbracket $$
 where $\mathcal{I}$ is either a type parameter or a wildcard bound.
 \end{definition}
 
-\begin{remark}\label{javaisreallystupid}
+\begin{figure}
+  \begin{mathpar}
+    \inferrule
+    { \subtype{\generic{H}{\mathcal{I}}}{\generic{G}{\mathcal{I}}} \\
+      \subtype{\generic{G}{\mathcal{I}}}{\generic{F}{\mathcal{I}}}}
+    {\subtype{\generic{H}{\mathcal{I}}}{\generic{F}{\mathcal{I}}}}
+    
+    \inferrule
+    {\subtype{S}{T}}
+    {\subtype{\generic{G}{\subtype{?}{S}}}{\generic{G}{T}}}
+
+    \inferrule
+    {\subtype{S}{T}}
+    {\subtype{\generic{G}{T}}{\generic{G}{\subtype{S}{?}}}}
+  \end{mathpar}
+  \caption{Generic and wildcard subtyping rules for Java}
+  \label{fig:genericsubtype}
+\end{figure}
+
+We may write the subtyping rules for generics as in \ref{fig:genericsubtype}.
+
+\begin{remark}\label{remark:javaisreallystupid}
 \href{https://arxiv.org/pdf/1605.05274.pdf}{Subtyping in Java is undecidable do to wildcards.}
 \end{remark}
 
@@ -1488,12 +1552,12 @@ Leaking can be exploited to bypass an object's boundary/interface.
 
 \epigraph{\itshape The big lie of object-oriented programming is that objects provide encapsulation.}{John Hogg.}
 
-\begin{remark}\label{captures}
+\begin{remark}\label{remark:captures}
 If an interface has a method that accepts some object or object structure as an argument, and it captures that argument, its interface may be bypassed if the caller decides to mutate what was passed in.
 Just making fields private that represent the internal state of the callee does nothing.
 \end{remark}
 
-\begin{remark}\label{leaks}
+\begin{remark}\label{remark:leaks}
 If an interface has a method that returns an object, array, or reference part of its internal data structure this is leaking, and any client may modify this object and thus the internal state.
 \end{remark}
 
@@ -1666,11 +1730,11 @@ A reference's lifetime is the span of program syntax from when it is born into t
 Leaking is possible in Rust if a function returns a mutable reference.
 However capturing is safe because the capturing data structure owns the captured value.
 
-\begin{remark}\label{rustcoolmem}
+\begin{remark}\label{remark:rustcoolmem}
   Rust can safely deallocate memory of variables at the end of their scope because of the uniqueness of ownership.
 \end{remark}
 
-\begin{remark}\label{rusttree}
+\begin{remark}\label{remark:rusttree}
   In safe Rust it is not possible to construct cyclic data structures.
 \end{remark}
 

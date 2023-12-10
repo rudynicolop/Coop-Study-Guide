@@ -15,7 +15,7 @@
 \newcommand{\syntactic}{Syntactic}
 \newcommand{\behavioral}{Behavioral}
 
-\newcommand{\subtype}[2]{#1 ~ <: ~ #2}
+\newcommand{\subtype}[2]{#1 <: #2}
 
 \newcommand{\override}{override}
 
@@ -45,10 +45,13 @@
 \newcommand{\load}[2]{\texttt{load}_{#1} ~ #2}
 \newcommand{\store}[2]{\texttt{store}_{#1} ~ #2}
 \newcommand{\const}[1]{\texttt{iconst} ~ #1}
-\newcommand{\invoke}[3]{\texttt{invokevirtual} ~ #1 . #2 . #3}
+\newcommand{\invokev}[3]{\texttt{invokevirtual} ~ #1 . #2 . #3}
 \newcommand{\return}[1]{\texttt{return}_{#1}}
 \newcommand{\goto}[1]{\texttt{goto} ~ #1}
 \newcommand{\op}[1]{\texttt{op}_{#1}}
+\newcommand{\ifeq}[1]{\texttt{ifeq} ~ #1}
+\newcommand{\invokei}[3]{\texttt{invokeinterface} ~ #1 . #2 . #3}
+
 
 \newcommand{\judge}[6]{#1 \vdash #2 : (#3, #4) \rightarrow (#5, #6)}
 
