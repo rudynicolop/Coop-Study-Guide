@@ -2281,7 +2281,7 @@ Thus at the end of surface-level constructor call the constructed object will sa
   \begin{mathpar}
     \inferrule
     { \forall i, \Gamma \vdash e_i : C_i ~ S_i \\
-      constructor(A) : C'_i T_i \rightarrow \nonnull{A} \\
+      constructor(A) : C'_i ~ T_i \rightarrow \nonnull{A} \\
       \forall i, \subtype{C_i ~ S_i}{C'_i ~ T_i} \\
       ((\forall i, C_i = \texttt{com}) \rightarrow C = \texttt{com}) \vee C = \texttt{free}
     }
