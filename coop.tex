@@ -25,7 +25,7 @@
 \usepackage{algpseudocode}
 
 \title{Concepts (Principles) of Object-Oriented Programming \\ Study Guide}
-\author{Johan Liebert}
+\author{Karl Marx}
 \date{\today}
 
 \begin{document}
@@ -1350,8 +1350,7 @@ Then at \runtime{}:
 \end{enumerate}
 \end{example}
 
-\begin{definition}[JLS2 Java method selection]
-\label{jls2}
+\begin{definition}\label{jls2}[JLS2 Java method selection]
 Java fixed their broken \ref{jls1} by ensuring that the \dynamic{}ally selected method is able to \override{} the \static{}ally determined method.
 When some \receiver{} $o$ invokes a method $m$, \static{}ally/at \compiletime{}:
 \begin{enumerate}
@@ -1450,7 +1449,7 @@ All this begs the question: what is an object structure?
 
 \section{Object Structures and Aliasing}
 
-\epigraph{\itshape I call it my billion-dollar mistake. It was the invention of the null reference in 1965.}{Tony Hoare}
+\epigraph{\itshape Object-oriented programming had boldly promised ``to model the world." Well, the world is a scary place where bad things happen for no apparent reason, and in this narrow sense I concede that OO does model the world.}{Dave Fancher}
 
 Single objects are the atomic building blocks of OOP. From these we can build more complex objects or \textit{object structures} when their classes have fields that are other objects.
 
@@ -1700,7 +1699,9 @@ TODO: example of rust borrow checking, when a mutable reference may be created a
 
 \section{Initialization}
 
-\epigraph{\itshape Object-oriented programming had boldly promised ``to model the world." Well, the world is a scary place where bad things happen for no apparent reason, and in this narrow sense I concede that OO does model the world.}{Dave Fancher}
+\epigraph{\itshape I call it my billion-dollar mistake. It was the invention of the null reference in 1965.}{Tony Hoare}
+
+\epigraph{\itshape Null is very nice and intuitive to work with. There's no alternative more expressive, safe, nor efficient.}{Nobody}
 
 \subsection{Simple Non-null Types}
 
@@ -1720,6 +1721,261 @@ In other words:
 \cringe{} is cringe.
 Algebraic data types give you more expressiveness and safety.
 But some \textit{certain} languages (\textit{cough, cough} Java, C, C++, etc.) thought \cringe{} would be simpler to implement and program with.
+
+Unfortunately will not be getting rid of \cringe{} all together.
+Instead we will distinguish between \cringe{} types and \textit{non-\cringe{}} types.
+$\nonnull{T}$ denotes references to $T$ objects.
+$\nulltyp{T}$ denotes references to $T$ objects \textit{or} \cringe{}.
+$$ values(\nulltyp{T}) = \{ \cringe{} \} \cup values(\nonnull{T}) $$
+
+\begin{definition}[Type safety invariant]\label{def:nulltypesafeinv}
+  We would like to \static{}ally  guarantee:
+  $$\forall e, v, T, e : \nonnull{T} \rightarrow e \downarrow v \rightarrow v \neq \cringe{}$$
+  We would like to prevent \cringe{} dereferencing at \compiletime{} (while still having \cringe{} in the language).
+  I.e. we would like to prevent the \receiver{} from ever being \cringe{}.
+  Because $values(\nonnull{T}) \subset values(\nulltyp{T})$ we may have the following subtyping rules:
+  \begin{mathpar}
+    \inferrule
+    {S ~ \texttt{extends} ~T}
+    {\subtype{\nonnull{S}}{\nonnull{T}}}
+
+    \inferrule
+    {S ~ \texttt{extends} ~T}
+    {\subtype{\nulltyp{S}}{\nulltyp{T}}}
+
+    \inferrule
+    { }
+    {\subtype{\nonnull{T}}{\nulltyp{T}}}
+  \end{mathpar}]
+  Downcasts from $\nulltyp{T}$ to $\nonnull{T}$ require a \textit{\runtimecheck{}}.
+\end{definition}
+
+Because downcasts are inherently unsafe but needed if we every want to do something with a \cringe{} type, we need to first check whether or not an instance of a \cringe{} type is really indeed \cringe{}.
+To prevent \compiletime{} errors for potential \cringe{} dereferencing our type system will use a \textit{dataflow analysis}.
+
+\begin{example}[Checking \cringe{}]
+  Consider some \texttt{Map} class that represents a key-value map.
+\begin{lstlisting}[language=Java]
+class Map {
+    private Object! key;
+    private Object! val;
+    private Map? next;
+
+    public Map (Object! key, Object! val, Map? next) {
+        this.key = key;
+        this.val = val;
+        this.next = next;
+    }
+
+   public Object? get (Object! key) {
+       if (this.key == key) return this.value;
+       return this.next.get(key);
+   }
+}
+\end{lstlisting}
+  \texttt{get} is not \cringe{}-safe because \texttt{this.next} could be \cringe{}.
+  So we need to first check whether it is \cringe{} before we use it as a \receiver{}.
+\begin{lstlisting}[language=Java]
+public Object? get (Object! key) {
+    if (this.key == key) return this.value;
+    if (this.next == null) return null;
+    return this.next.get(key);
+}
+\end{lstlisting}
+  This seems like a reasonable solution, and in a sequential setting it could be.
+  However interleavings are possible that allow some other thread to set \texttt{this.next} to \cringe{} before \texttt{this.next.get(key)} is invoked.
+  Thus we need to assign to a local variable first.
+\begin{lstlisting}[language=Java]
+public Object? get (Object! key) {
+    if (this.key == key) return this.value;
+    Map? nextUp = this.next;
+    if (nextUp == null) return null;
+    return nextUp.get(key);
+}
+\end{lstlisting}
+  There is no way for another thread to set \texttt{nextUp} to anything.
+  Thus a dataflow analysis is powerful enough to see that when \texttt{nextUp.get(key)} is called we can guarantee that \texttt{nextUp} won't be \cringe{}.
+  In general dataflow analyses are only powerful enough to reason about local variables like \texttt{nextUp}, not heap locations such as \texttt{this.next}.
+\end{example}
+
+\subsection{Object Initialization}
+
+Constructing new objects poses many challenges when attempting to guarantee \ref{def:nulltypesafeinv}.
+Consider:
+\begin{itemize}
+\item We need to ensure that non-\cringe{} fields are initialized to a non-\cringe{} value when the constructor has completed.
+\item Non-\cringe{} fields may be \cringe{} before construction is finished.
+\end{itemize}
+
+Remember that in general it is okay for invariants to be violated in the middle of a function's execution.
+This may pose a problem especially in concurrent settings.
+
+\begin{definition}[Definite assignment rule]
+  \label{def:defassrule}
+  Every local variable must assigned to prior to its first use, particularly as a \receiver{}.
+  For object types this is especially important to prevent \cringe{}-dereferencing.
+  This may be checked by a dataflow analysis and during bytecode verification.
+\end{definition}
+
+\begin{remark}
+  Languages such as Java and C\# do not initialize declared variables, but do let you use them.
+\end{remark}
+
+We would like to extend {def:defassrule} to fields as well, but this is difficult to enforce in constructors.
+Especially because subobjects will implicitly or explicitly invoke the superobjects constructor during their constructor.
+
+\begin{example}[Dynamically-bound problems.]
+  Consider the didactically named class \texttt{Demo}.
+\begin{lstlisting}[language=Java]
+class Demo {
+    private Vector! cache;
+
+    Demo () {
+        int size = optimalSize();
+        this.cache = new Vector(size);
+    }
+
+    int optimalSize () { return 16; }
+}
+\end{lstlisting}
+  By this point, the OO guru in you is observing that calling a potentially dynamically-bound method, \texttt{optimalSize}, in the constructor is asking for trouble.
+  You may also be asking why not make \texttt{optimalSize} a constant field instead of a method.
+  Don't think about.
+  Don't ask questions.
+  As you would expect a subclass can cause problems.
+\begin{lstlisting}
+class SubDemo extends Demo {
+    private Vector! data;
+
+    SubDemo (Vector! d) {
+        // implicit call super()
+        this.data = d.clone();
+    }
+
+    int optimalSize () { return this.data.size() * 2; }
+}
+\end{lstlisting}
+  Every time we attempt to invoke the constructor for \texttt{SubDemo} bad things will happen: we will get a \cringe{}-exception.
+  You may ask, where did we go wrong (other than that we used OOP).
+  All \receiver{}s have non-\cringe{} types!
+  \begin{enumerate}
+  \item When the constructor for \texttt{SubDemo} is invoked it first (implicitly) invokes \texttt{Demo}'s constructor.
+  \item \texttt{Demo}'s constructor's call to \texttt{optimalSize} is \overide{}n by \texttt{SubDemo}'s.
+  \item In \texttt{SubDemo.optimalSize} we call \texttt{this.data.size()}.
+  \item But \texttt{this.data} has not yet been initialized to a non-\cringe{} value!
+  \item So we get a \cringe{}-pointer exception!
+  \end{enumerate}
+\end{example}
+
+\begin{example}[Callback problems]
+  Problems may occur if a class's constructor calls a method that call's one of its own dynamically-bound methods.
+  Once we again have an appropriately named \texttt{Demo} class.
+\begin{lstlisting}
+class Demo implements Observer {
+    static Subject! subject;
+
+    Demo () {
+        // register this as an observer of this.subject
+        this.subject.register(this);
+    }
+
+    void update () { ... }
+}
+\end{lstlisting}
+  Question: when does \texttt{this.subject} get initialized?
+
+  No dynamically-bound calls occur within \texttt{Demo}'s constructor.
+  The \texttt{Subject} class looks like:
+\begin{lstlisting}[language=Java]
+class Subject {
+    void register (Observer! o) {
+        ...
+        o.update();
+        ...
+    }
+}
+\end{lstlisting}
+  However again we may write a subclass that causes problems:
+\begin{lstlisting}[language=Java]
+class SubDemo extends Demo {
+     private Vector! data;
+
+     SubDemo (Vector! d) {
+         // implicit super() call
+         this.data = d.clone();
+     }
+
+    void update () {
+        ...
+        something = this.data.size();
+        ...
+    }
+}
+\end{lstlisting}
+  Once again a call to \texttt{SubDemo}'s constructor will throw a \cringe{}-pointer exception!
+  \begin{enumerate}
+  \item \texttt{SubDemo}'s constructor begins by implicitly invoking \texttt{Demo}'s constructor.
+  \item \texttt{Demo}'s constructor invokes \texttt{this.subject.register(this)}.
+  \item In \texttt{Subject.register} \texttt{update} is called, which is \override{}n in \text{SubDemo}.
+  \item In \texttt{SubDemo.update} \texttt{this.data.size()} is invoked.
+  \item But \texttt{this.data} is has not been initialized to a non-\cringe{} value so it is still \cringe{}!
+  \item A \cringe{} value as a \receiver{} throws a \cringe{}-pointer exception!
+  \end{enumerate}
+\end{example}
+
+\begin{example}[Concurrency woes]
+  So maybe the constructor doesn't even indirectly call one of its own \dynamic{}ally bound methods.
+  Concurrent execution still has something to say.
+\begin{lstlisting}[language=Java]
+class Demo implements Observer {
+    static Subject! subject;
+
+    Demo () {
+        // register this as an observer of this.subject
+        this.subject.register(this);
+    }
+
+    void update () { ... }
+}
+
+class SubDemo extends Demo {
+     private Vector! data;
+
+     SubDemo (Vector! d) {
+         // implicit super() call
+         this.data = d.clone();
+     }
+
+    void update () {
+        ...
+        something = this.data.size();
+        ...
+    }
+}
+
+class Subject extends Thread {
+    List<Observer!>! observers;
+
+    void register (Observer! o) { observers.add(o);  }
+
+    void run () {
+        for (Observer! o : this.observers) o.update();
+    }
+}
+\end{lstlisting}
+  Here the problem arises from an unlucky interleaving.
+  Consider the following execution.
+  \begin{enumerate}
+  \item \texttt{SubDemo}'s constructor is invoked.
+  \item The implicit \texttt{super()} call is invoked.
+  \item In \texttt{Demo}'s constructor \texttt{this} is registered as an observer.
+  \item In \texttt{Subject.register} out object under construction is added to \texttt{observers}.
+  \item Our constructor's execution is preempted by the thread calling \texttt{Subject.run}.
+  \item \texttt{update} is called upon our object under constructor, which is \dyanamic{}ally bound to that in \texttt{SubDemo}.
+  \item In \texttt{Subject.update} \texttt{this.data.size()} is invoked.
+  \item But \texttt{this.data} is still \cringe{}, so a \cringe{}-pointer exception is thrown.
+  \end{enumerate}
+\end{example}
 
 \vspace{1cm}
 
