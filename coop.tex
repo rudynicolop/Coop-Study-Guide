@@ -760,50 +760,50 @@ JVM instructions are typechecked. There's a max stack size $MS$, input type list
 \begin{mathpar}
 \boxed{\judge{MS}{\instr}{S}{R}{S'}{R'}} \\
 
-\inferrule
+\inferrule*[right=\textsc{Const}]
 {|S| < MS}
 {\judge{MS}{\const{z}}{S}{R}{\texttt{int}.S}{R}}
 
-\inferrule
+\inferrule*[right=\textsc{Load}]
 {|S| < MS \\
 \subtype{R(r)}{\tau}}
 {\judge{MS}{\load{\tau}{r}}{S}{R}{\tau.S}{R}}
 
-\inferrule
+\inferrule*[right=\textsc{Store}]
 {\subtype{\tau'}{\tau} \\
 R'(r) = \tau}
 {\judge{MS}{\store{\tau}{r}}{\tau'.S}{R}{S}{R'}}
 
-\inferrule
+\inferrule*[right=\textsc{Op}]
 {1 + |S| < MS \\
 \otimes : \tau_1 \times \tau_2 \rightarrow \tau \\
 \subtype{\tau_1'}{\tau_1} \\
 \subtype{\tau_2'}{\tau_2}}
 {\judge{MS}{\op{\otimes}}{\tau_1'.\tau_2'.S}{R}{\tau.S}{R}}
 
-\inferrule
+\inferrule*[right=\textsc{InvokeVirutal}]
 {n + |S| < MS \\
 \subtype{\tau'}{C} \\
 \subtype{\tau_1'}{\tau_1} ~ ... ~ \subtype{\tau_n'}{\tau_n} \\
 }
 {\judge{MS}{\invokev{C}{m}{\tau_r (\tau_1, ..., \tau_n)}}{\tau_n'...\tau_1'.\tau'.S}{R}{\tau_r.S}{R}} \\
 
-\inferrule
+\inferrule*[right=\textsc{InvokeInterface}]
 {n + |S| < MS \\
 \subtype{\tau'}{Object} \\
 \subtype{\tau_1'}{\tau_1} ~ ... ~ \subtype{\tau_n'}{\tau_n} \\
 }
 {\judge{MS}{\invokei{I}{m}{\tau_r (\tau_1, ..., \tau_n)}}{\tau_n'...\tau_1'.\tau'.S}{R}{\tau_r.S}{R}} \\
 
-\inferrule
+\inferrule*[right=\textsc{IfEq}]
 { }
 {\judge{MS}{\ifeq{l}}{\texttt{int}.S}{R}{S}{R}}
 
-\inferrule
+\inferrule*[right=\textsc{Goto}]
 { }
 {\judge{MS}{\goto{l}}{S}{R}{S}{R}}
 
-\inferrule
+\inferrule*[right=\textsc{Return}]
 {\subtype{\tau'}{\tau}}
 {\judge{MS}{\return{\tau}}{\tau'.S}{R}{\emptyset}{\emptyset}}
 \end{mathpar}
@@ -861,6 +861,94 @@ To start out we want the stack to be empty, and the registers to contain the kno
 \end{algorithm}
 
 \href{https://www.irisa.fr/celtique/teaching/SOS/2021/Leroy-bytecode-verification-JAR.pdf}{Read this to learn more about java bytecode verification.}
+
+\begin{example}[Bytecode verification example]
+  Suppose we have a class hierarchy $\subtype{D}{C}$ and $\subtype{E}{C}$.
+  Consider the program:
+\begin{lstlisting}[language=JVMIS, numbers=left, firstnumber=0]
+aload 0;
+astore 2;
+aload 1;
+goto 1;
+\end{lstlisting}
+  Lets say that the signature that the start of the program is $[], [D,E,\top]$,
+  so we set $\wkin{0} = [], [D,E,\top]$.
+  The worklist at first has all instructions in order.
+  \begin{enumerate}
+  \item We pop instruction $\instr{}(0) = \texttt{aload 0}$ from the worklist.
+    We have $\wkin{0} = [], [D,E,\top]$.
+    Applying \textsc{Load} we get $\wkout{0} = [D], [D,E,\top]$.
+    The only successor of $\instr{}(0) = \texttt{aload 0}$ is $\instr{}(1) = \texttt{astore 2}$.
+    Since we do not yet have $\wkin{1}$ we set it as $\wkin{1} = \wkout{0} = [D], [D,E,\top]$.
+    Since $\wkin{1}$ has changed we still need $\instr{}(1) = \texttt{astore 2}$ in the worklist.
+  \item We pop instruction $\instr{}(1) = \texttt{astore 2}$ from the worklist.
+    We have $\wkin{1} = [D], [D,E,\top]$.
+    Applying \textsc{Store} we get $\wkout{1} = [], [D,E,D]$.
+    The only successor of $\instr{}(1) = \texttt{astore 2}$ is $\instr{}(2) = \texttt{aload 1}$.
+    Since we do not yet have $\wkin{2}$ we set it as $\wkin{2} = \wkout{1} = [], [D,E,D]$.
+    Since $\wkin{2}$ has changed we still need $\instr{}(2) = \texttt{aload 1}$ in the worklist.
+  \item We pop instruction $\instr{}(2) = \texttt{aload 1}$ from the worklist.
+    We have $\wkin{2} = [], [D,E,D]$.
+    Applying \textsc{Load} we get $\wkout{2} = [E], [D,E,D]$.
+    The only successor of $\instr{}(2) = \texttt{aload 1}$ is $\instr{}(3) = \texttt{goto 1}$.
+    Since we do not yet have $\wkin{3}$ we set it as $\wkin{3} = \wkout{2} = [E], [D,E,D]$.
+    Since $\wkin{3}$ has changed we still need $\instr{}(3) = \texttt{goto 1}$ in the worklist.
+  \item We pop instruction $\instr{}(3) = \texttt{goto 1}$ from the worklist.
+    We have $\wkin{3} = [E], [D,E,D]$.
+    Applying \textsc{Goto} we get $\wkout{3} = [E], [D,E,D]$.
+    The only successor of $\instr{}(3) = \texttt{goto 1}$ is $\instr{}(1) = \texttt{astore 2}$.
+    We assign $\wkin{1}$ as:
+    \begin{align*}
+      \wkin{1} &= \wkin{1} \sqcup \wkout{3} \\
+               &= ([D], [D,E,\top]) \sqcup ([E], [D,E,D]) \\
+               &= [D] \sqcup [E], [D,E,\top] \sqcup [D,E,D] \\
+               &= [D \sqcup E], [D \sqcup D, E \sqcup E, \top \sqcup D] \\
+               &= [C], [D, E, \top]
+    \end{align*}
+    Since $\wkin{1}$ has changed we add $\instr{}(1) = \texttt{astore 2}$ back into the worklist.
+  \item We pop instruction $\instr{}(1) = \texttt{astore 2}$ from the worklist.
+    We have $\wkin{1} = [C], [D, E, \top]$.
+    Applying \textsc{Store} we get $\wkout{1} = [], [D, E, C]$.
+    The only successor of $\instr{}(1) = \texttt{astore 2}$ is $\instr{}(2) = \texttt{aload 1}$.
+    We assign $\wkin{2}$ as:
+    \begin{align*}
+      \wkin{2} &= \wkin{2} \sqcup \wkout{1} \\
+               &= ([], [D,E,D]) \sqcup [], [D, E, C] \\
+               &= [] \sqcup [], [D,E,D] \sqcup [D,E,C] \\
+               &= [], [D \sqcup D, E \sqcup E, D \sqcup C] \\
+               &= [], [D,E,C]
+    \end{align*}
+    Since $\wkin{2}$ has changed we add $\instr{}(2) = \texttt{aload 1}$ back into the worklist.
+  \item We pop instruction $\instr{}(2) = \texttt{aload 1}$ from the worklist.
+    We have $\wkin{2} = [], [D,E,C]$.
+    Applying \textsc{Load} we get $\wkout{2} = [E], [D,E,C]$.
+    The only successor of $\instr{}(2) = \texttt{aload 1}$ is $\instr{}(3) = \texttt{goto 1}$.
+    We assign $\wkin{3}$ as:
+    \begin{align*}
+      \wkin{3} & = \wkin{3} \sqcup \wkout{2} \\
+               &= ([E], [D,E,D]) \sqcup ([E], [D,E,C]) \\
+               &= [E] \sqcup [E], [D,E,D] \sqcup [D,E,C] \\
+               &= [E \sqcup E], [D \sqcup D, E \sqcup E, D \sqcup C] \\
+               &= [E], [D,E,C]
+    \end{align*}
+    Since $\wkin{3}$ has changed we add $\instr{}(3) = \texttt{goto 1}$ back into the worklist.
+  \item We pop instruction $\instr{}(3) = \texttt{goto 1}$ from the worklist.
+    We have $\wkin{3} = [E], [D,E,C]$.
+    Applying \textsc{Goto} we get $\wkout{3} = [E], [D,E,C]$.
+    The only successor of $\instr{}(3) = \texttt{goto 1}$ is $\instr{}(1) = \texttt{astore 2}$.
+    We assign $\wkin{1}$ as:
+    \begin{align*}
+      \wkin{1} &= \wkin{1} \sqcup \wkout{3} \\
+               &= ([C], [D, E, \top]) \sqcup ([E], [D,E,C]) \\
+               &= [C] \sqcup [E], [D, E, \top] \sqcup [D,E,C] \\
+               &= [C \sqcup E], [D \sqcup D, E \sqcup E, \top \sqcup C] \\
+               &= [C], [D,E,\top]
+    \end{align*}
+    $\wkin{1}$ has \textit{not} changed so we do not add it back to the worklist.
+  \item The worklist is empty, so the algorithm is done.
+  \end{enumerate}
+\end{example}
+  
 
 \subsection{Parametric Polymorphism}
 
@@ -1243,21 +1331,34 @@ where $\mathcal{I}$ is either a type parameter or a wildcard bound.
     \inferrule
     { \subtype{\generic{H}{\mathcal{I}}}{\generic{G}{\mathcal{I}}} \\
       \subtype{\generic{G}{\mathcal{I}}}{\generic{F}{\mathcal{I}}}}
-    {\subtype{\generic{H}{\mathcal{I}}}{\generic{F}{\mathcal{I}}}}
+    {\subtype{\generic{H}{\mathcal{I}}}{\generic{F}{\mathcal{I}}}} \\
     
-    \inferrule
-    {\subtype{S}{T}}
-    {\subtype{\generic{G}{\subtype{?}{S}}}{\generic{G}{T}}}
+    % \inferrule
+    % {\subtype{S}{T}}
+    % {\subtype{\generic{G}{\subtype{?}{S}}}{\generic{G}{T}}}
 
     \inferrule
     {\subtype{S}{T}}
     {\subtype{\generic{G}{T}}{\generic{G}{\subtype{S}{?}}}}
+
+    \inferrule
+    {\subtype{S}{T}}
+    {\subtype{\generic{G}{\subtype{?}{S}}}{\generic{G}{\subtype{?}{T}}}}
+
+    \inferrule
+    {\subtype{S}{T}}
+    {\subtype{\generic{G}{\subtype{T}{?}}}{\generic{G}{\subtype{S}{?}}}}
+
+    % \inferrule
+    % {\subtype{S}{T}}
+    % {\subtype{\generic{G}{\subtype{?}{S}}}{\generic{G}{\subtype{T}{?}}}}
   \end{mathpar}
   \caption{Generic and wildcard subtyping rules for Java}
   \label{fig:genericsubtype}
 \end{figure}
 
 We may write the subtyping rules for generics as in \ref{fig:genericsubtype}.
+% TODO: Some are not allowed need to resolve which are sound.
 
 \begin{remark}\label{remark:javaisreallystupid}
 \href{https://arxiv.org/pdf/1605.05274.pdf}{Subtyping in Java is undecidable do to wildcards.}
@@ -1810,7 +1911,7 @@ $$ values(\nulltyp{T}) = \{ \cringe{} \} \cup values(\nonnull{T}) $$
     \inferrule
     { }
     {\subtype{\nonnull{T}}{\nulltyp{T}}}
-  \end{mathpar}]
+  \end{mathpar}
   Downcasts from $\nulltyp{T}$ to $\nonnull{T}$ require a \textit{\runtimecheck{}}.
 \end{definition}
 
@@ -2298,15 +2399,22 @@ Local initialization is a \textit{partial} property.
   At first glance it may seem like a type $\committed{\nulltyp{T}}$ is a paradox: does such a type violate \ref{definition:transinit}?
   Such a type is actually okay because it is all right for a committed non-\cringe{} type to have a \cringe{} field.
   The idea is that a type being non-\cringe{} is a property of a local variable, and it being committed is a property of the object that a local variable points to.
+  When you read from free field it is unclassified (either free or committed).
+  Fields of free refs are unclassified.
+  When we read a field from a free reference its possibly null, so we need to check.
 \end{definition}
 
 \begin{definition}[Typing constructor declarations]
   When we type the body of a constructor, we assume that \texttt{this} has a free, non-\cringe type.
   By the end non-\cringe{} values must be assigned to non-\cringe{} fields.
+  That is the constructor must have the explicit syntax \texttt{this.field = <not null>} for each field of a non-\cringe{} type.
+  This is called \textit{the definite assignment check}.
+  Constructors may either call free or unclassified methods
 \end{definition}
 
 \begin{definition}[Typing method calls]
   The \receiver{} of a method call must be non-\cringe{}.
+  Construction types for methods are those for \receiver{}, so subtyping with them is \contra{}.
 \end{definition}
 
 How do we know when construction is complete?
@@ -2364,5 +2472,41 @@ Thus at the end of surface-level constructor call the constructed object will sa
 
 Now in general methods need to be annotated with \texttt{free} to invoke them during construction.
 Such methods may not use \texttt{this} as a \receiver{}.
+
+Free and unclassified arguments to nested new must have come from within the surface constructor.
+
+\begin{example}[Declared vs actual types]
+  Formal construction type of parameter doesn't matter as much as static type of argument.
+\begin{lstlisting}[language=Java]
+public C {
+    public C (unc String c) {...}
+}
+\end{lstlisting}
+We may do the following since committed types are subtypes of unclassified types.
+\begin{lstlisting}
+String s = "Hello";
+C x = new C(s); // ok, will know s is committed
+\end{lstlisting}
+\end{example}
+
+The type rule for array assignment forces right hand side to be committed.
+Note that we do not allow overloads from differences in construction types.
+Checkout spec sharp.
+Sometimes better to call super constructor at end of sub constructor.
+
+\subsection{Global Initialization}
+
+If a module A uses a global variable from module B, main needs to init B first.
+In C++ the programmer needs to declare modules in right order.
+In Java static initializers calling static stuff from other class causes problems.
+
+\section{Reflection}
+
+When calling \texttt{f.get(o)}, $o$ may not have field $f$,
+or $f$ may not be accessible, etc.
+Thus we need \runtimecheck{}s because Java cannot \static{}ally guarantee that reflection method calls are okay.
+\texttt{setAccessible} can be disabled by security manager.
+\texttt{setAccessible} doesn't change class, just allows one to get a method of any visibility.
+Java cannot change established class code at \runtime{}, but Python can!
 
 \end{document}
