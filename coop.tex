@@ -1364,6 +1364,119 @@ We may write the subtyping rules for generics as in \ref{fig:genericsubtype}.
 \href{https://arxiv.org/pdf/1605.05274.pdf}{Subtyping in Java is undecidable do to wildcards.}
 \end{remark}
 
+\begin{example}[Java example rules]
+  Here is a concrete Java program that attempts to use certain inference rules.
+  It is interesting to see what Java allows and disallows.
+\begin{lstlisting}
+import java.util.*;
+
+class Animal {
+    
+    Animal () {}
+}
+
+class Cat extends Animal {
+    Cat () {}
+    
+    void meow () {
+        System.out.println("meow");
+    }
+    
+}
+
+class Dog extends Animal {
+    Dog () {}
+    
+    void bark () {
+        System.out.println("bark");
+    }
+    
+}
+
+public class MyClass {
+    public static void main(String args[]) {
+        ArrayList<Animal> lAnimal = new ArrayList<Animal>();
+        ArrayList<Cat>    lCat    = new ArrayList<Cat>();
+        
+        // Java forbids covariant generics
+        // lAnimal = lCat;
+        // lAnimal.add(new Dog());
+        
+        // Java forbirds contravariant generics
+        // lCat = lAnimal;
+        
+        
+        // Java forbids
+        //            S <: T
+        // ----------------------
+        // G < ? <: S > <: G < T >
+        
+        ArrayList<Animal>        animalList = new ArrayList<Animal>();
+        ArrayList<? extends Cat> catList    = new ArrayList<Cat>();
+        
+        // Java forbids this?
+        // animalList = catList;
+        
+        // Java allows
+        //       S <: T
+        // -----------------------
+        // G < T > <: G < S <: ? >
+        
+        ArrayList<? super Cat> catlist    = new ArrayList<Object>();
+        ArrayList<Animal>      animallist = new ArrayList<Animal>();
+        
+        catlist = animallist;
+        
+        // Java allows
+        //            S <: T
+        // -------------------------
+        // G < ? <: S > <: G < ? <: T >
+        
+        ArrayList<? extends Animal> ldog = new ArrayList<Dog>(Arrays.asList(new Dog()));
+        ArrayList<? extends Cat>    lcat = new ArrayList<Cat>(Arrays.asList(new Cat()));
+        ldog = lcat;
+        
+        // Java forbids writes to covariantly declared object
+        // ldog.add(new Dog());
+        
+        
+        // Java allows
+        //            S <: T
+        // ----------------------
+        // G < T <: ? > <: G < S <: ? >
+        ArrayList<? super Animal> lsub = new ArrayList<Animal>();
+        ArrayList<? super Cat>    ltop = new ArrayList<Object>();
+        ltop = lsub;
+        
+        // Put a Cat in a list with lowerbound as Animal
+        ltop.add(new Cat());
+        Object element = lsub.get(0);
+        System.out.println(element instanceof Cat);
+        ((Cat) element).meow();
+        
+        // Java forbids
+        //            S <: T
+        // ----------------------
+        // G < ? <: S > <: G < T <: ? >
+        ArrayList<? super Animal> lTop = new ArrayList<Object>();
+        ArrayList<? extends Cat>  lSub = new ArrayList<Cat>(Arrays.asList(new Cat()));
+        
+        // Java forbids
+        // lTop = lSub;
+        
+        Cat cat1 = lSub.get(0);
+        
+        // Put a Cat in a list with a lower bound as Animal
+        lTop.add(cat1);
+
+        Cat cat = (Cat) lTop.get(0);
+        cat.meow();
+    }
+}
+\end{lstlisting}
+  It was not possible to obtain assurance as to which inference rules are allowed by Java and those that are not so hopefully this example will illuminate any issues.
+\end{example}
+
 \subsubsection{Type Erasure}
 
 For backwards compatibility, Sun did not want to change the JVM after generics were introduced. So generic type information is erased by the compiler. $\generic{G}{T}$ becomes just $G$ in java bytecode. Occasionally the compiler needs to insert casts to the class used for the type argument for instances of generic types. Because of this, Java disallows the following:
