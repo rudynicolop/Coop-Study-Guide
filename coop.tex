@@ -444,6 +444,77 @@ class Value {
   we can reduce $A ~ || ~ B ~ || ~ C ~ || ~ D$ to $A ~ || ~ D$.
 \end{example}
 
+\begin{example}[Dynamic types are screwy]
+  If we know that some term $t$ has type $T$, $t : T$, in a normal language without subtyping we can make assumptions about the form $t$ takes.
+  However in a setting with subtyping, knowing $t : T$ only tells us that there's some $S$ that $t$ really is, where $\subtype{S}{T}$.
+  Consider a language that has a \texttt{MyType} to represent the \dyanamic{} type of a term.
+  We may define:
+\begin{lstlisting}[language=Java]
+class Point {
+    int x,y;
+
+    boolean equals(MyType other) {
+        return x == other.x && y == other.y;
+    }
+}
+
+class ColorPoint extends Point {
+    int color;
+    override boolean equals(MyType other) {
+        return super.equals(other) && color == other.color;
+    }
+}
+\end{lstlisting}
+  In these definitions we require that \dynamic{} type of the parameter of \texttt{equals} is a subtype of the dynamic type of \texttt{this}.
+  This seems innocent enough.
+  However this restriction is very screwy when you consider that some subclass of \texttt{Point} or \texttt{ColorPoint} may inherit \texttt{equals} and call it.
+  In this setting we have no idea of the lower bound on \texttt{this}.
+  Thus all of the following calls are bad:
+\begin{lstlisting}[language=Java]
+Point p        = ...;
+ColorPoint cp1 = ...;
+ColorPoint cp2 = ...;
+p.equals(cp1)   // Bad, p may be some other subtype of Point not related to ColorPoint
+p.equals(cp2)   // Bad, p may be some other subtype of Point not related to ColorPoint
+cp1.equals(p)   // Bad, p could be Point and cp1 could be ColorPoint
+cp2.equals(cp1) // Bad, cp2 could be some other subtype of ColorPoint
+cp1.equals(cp2) // Bad, cp1 could be some other subtype of ColorPoint
+\end{lstlisting}
+  What if we make \texttt{ColorPoint} \texttt{final}; that is no class may \texttt{extend} \texttt{ColorPoint}.
+\begin{lstlisting}[language=Java]
+final class ColorPoint extends Point {
+    int color;
+    override boolean equals(MyType other) {
+        return super.equals(other) && color == other.color;
+    }
+}
+\end{lstlisting}
+  That helps us with the last two calls.
+\begin{lstlisting}[language=Java]
+Point p        = ...;
+ColorPoint cp1 = ...;
+ColorPoint cp2 = ...;
+p.equals(cp1)   // Bad, p may be some other subtype of Point not related to ColorPoint
+p.equals(cp2)   // Bad, p may be some other subtype of Point not related to ColorPoint
+cp1.equals(p)   // Bad, p could be Point and cp1 could be ColorPoint
+cp2.equals(cp1) // Okay, both must be ColorPoint
+cp1.equals(cp2) // Okay, both must be ColorPoint
+\end{lstlisting}
+  Instead what if we could guarantee that a term has \textit{exactly} its declared type.
+  Say the syntax is \texttt{@T t} where $t$ dynamically does not have a subtype of $T$.
+  We could say the following
+\begin{lstlisting}[language=Java]
+@Point p        = ...;
+@ColorPoint cp1 = ...;
+ColorPoint cp2  = ...;
+p.equals(cp1)   // Okay, p must be Point
+p.equals(cp2)   // Okay, p must be Point
+cp1.equals(p)   // Bad, p is Point and cp1 is ColorPoint
+cp2.equals(cp1) // Bad, cp2 could be some other subtype of ColorPoint
+cp1.equals(cp2) // Okay, cp1 must be ColorPoint
+\end{lstlisting}
+\end{example}
+
 \subsection{Behavioral Subtyping}
 
 \begin{definition}[Semantic Classification of Subtyping]
@@ -520,10 +591,172 @@ Subtypes may \textit{strengthen} history constraints for fields.
 \end{equation}
 \end{definition}
 
+\begin{example}[Unique key generation]
+  We may specify a class that generates unique keys as an incrementing counter, that is keys it has not generated before, as follows
+\begin{lstlisting}[language=Java]
+class IncCounter {
+    // constraint old(key) <= key
+    int key;
+
+    IncCounter (int k) {
+        this.key = k;
+    }
+
+    // ensures key = old(key) + 1 /\ result = old(key)
+    int generate () {
+        return this.key++;
+    }
+}
+\end{lstlisting}
+  The conjunction of the history constraint and postcondition of \texttt{generate} ensure that it actually generates new keys.
+  Of course we are assuming no overflow.
+  We could do something similar with a decrementing counter.
+\begin{lstlisting}[language=Java]
+class DecCounter {
+    // constraint key <= old(key)
+    int key;
+
+    DecCounter (int k) {
+        this.key = k;
+    }
+
+    // ensures key + 1 = old(key) /\ result = old(key)
+    int generate () {
+        return this.key--;
+    }
+}
+\end{lstlisting}
+  Each is acceptable as a unique key generator, but neither is a behavioral subtype of the other.
+  We may unify each with a common abstract class.
+  A first attempt at generalizing some transitive relation to be used for uniqueness and a reflexive closure of that relation is as follows.
+\begin{lstlisting}
+abstract class GenerateUniqueKey {
+    // constraint reflTransRel(old(key),key)
+    int key;
+
+    // Some transitive relation.
+    boolean transRel(int, int);
+
+    // The reflexive closure of the transitive relation.
+    boolean reflTransRel(int x, int y) {
+        return transRel(x, y) || x == y
+    }
+
+    // ensures transRel(old(key), key) /\ result = old(key)
+    int generate ();
+}
+
+class IncCounter extends GenerateUniqueKey {
+    // constraint old(key) <= key
+    int key;
+
+    IncCounter (int k) {
+        this.key = k;
+    }
+
+    boolean transRel(int x, int y) {
+        return x < y
+    }
+
+    // ensures key = old(key) + 1 /\ result = old(key)
+    int generate () {
+        return this.key++;
+    }
+}
+
+class DecCounter extends GenerateUniqueKey {
+    // constraint key <= old(key)
+    int key;
+
+    DecCounter (int k) {
+        this.key = k;
+    }
+
+    boolean transRel(int x, int y) {
+        return y < x
+    }
+
+    // ensures key + 1 = old(key) /\ result = old(key)
+    int generate () {
+        return this.key++;
+    }
+}
+\end{lstlisting}
+  A more precise version is as follows.
+\begin{lstlisting}
+abstract class GenerateUniqueKey {
+     // constraint forall z, old(used(z)) -> used(z)
+
+     abstract boolean used (int);
+
+     // ensures ~ old(used(result)) /\ used(result)
+     int generate ();
+}
+
+class IncCounter extends GenerateUniqueKey {
+    // constraint old(key) <= key
+    int key;
+
+    IncCounter (int k) {
+        this.key = k;
+    }
+
+    boolean used (int z) {
+        return z < this.key;
+    }
+
+    // ensures key = old(key) + 1 /\ result = old(key)
+    int generate () {
+        return this.key++;
+    }
+}
+
+class DecCounter {
+    // constraint key <= old(key)
+    int key;
+
+    DecCounter (int k) {
+        this.key = k;
+    }
+
+    boolean used (int z) {
+        return this.key < z;
+    }
+
+    // ensures key + 1 = old(key) /\ result = old(key)
+    int generate () {
+        return this.key--;
+    }
+}
+\end{lstlisting}
+  Note that the history constraint is defined in terms of some function \texttt{used}.
+  This is okay as long as \texttt{used} is \textit{pure}.
+  Also note that we have \old{} wrapped around the result of a function without any fields.
+  \old{used(z)} means any previous value \texttt{used} gave for $z$.
+  The history constraint means that any int was used in the past, it is still used.
+  We can show that \texttt{IncCounter} and \texttt{DecCounter} are behavioral subtypes of \texttt{GenerateUniqueKey}.
+  For instance we can show that \texttt{IncCounter}'s history constraint is stronger than \texttt{GenerateUniqueKey}'s.
+  \begin{align*}
+    &\vdash \old{key} \leq key \rightarrow \forall z, \old{used(z)} \rightarrow used(z) \\
+    \old{key} \leq key, \old{used(z)} &\vdash used(z) \\
+    \old{key} \leq key, \old{z < key} &\vdash z < key \\
+    \old{key} \leq key, z < \old{key} &\vdash z < key \\
+  \end{align*}
+  We can demonstrate that \texttt{DecCounter}'s history constraint is okay similarly.
+  We can also show that \texttt{IncCounter.generate}'s postcondition is stronger than \texttt{GenerateUniqueKey.generate}'s.
+  \begin{align*}
+    &\vdash key = \old{key} + 1 \wedge result = \old{key} \rightarrow \neg \old{used(result)} \wedge used(result) \\
+    key = \old{key} + 1, result = \old{key} &\vdash \neg \old{used(result)} \wedge used(result) \\
+    key = \old{key} + 1, result = \old{key} &\vdash \neg \old{result < key} \wedge result < key \\
+    key = \old{key} + 1, result = \old{key} &\vdash \neg result < \old{key} \wedge result < key \\
+    key = \old{key} + 1, result = \old{key} &\vdash  \old{key} \leq result \wedge result < key \\
+    &\vdash result \leq result \wedge result < result + 1
+  \end{align*}
+\end{example}
+
 \section{Inheritance}
 
-\epigraph{\itshape Inheritance is not a core
-concept [of OOP].}{Peter M\"uller}
+\epigraph{\itshape Inheritance is not a core concept [of OOP].}{Peter M\"uller}
 
 \epigraph{\itshape Specifically, programming without inheritance is distinctly not object-oriented; that would merely be programming with abstract data types.}{Grady Booch}
 
