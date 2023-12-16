@@ -24,6 +24,4 @@ The material in this study guide was taken from the [course lecture slides by Pe
 
 - Revisit how new initialization rules prevent problems
 
-- Finish Static Initialization
-
 - Reflection?

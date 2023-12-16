@@ -1367,7 +1367,7 @@ We may write the subtyping rules for generics as in \ref{fig:genericsubtype}.
 \begin{example}[Java example rules]
   Here is a concrete Java program that attempts to use certain inference rules.
   It is interesting to see what Java allows and disallows.
-\begin{lstlisting}
+\begin{lstlisting}[language=Java]
 import java.util.*;
 
 class Animal {
@@ -2602,16 +2602,162 @@ C x = new C(s); // ok, will know s is committed
 \end{lstlisting}
 \end{example}
 
-The type rule for array assignment forces right hand side to be committed.
-Note that we do not allow overloads from differences in construction types.
-Checkout spec sharp.
-Sometimes better to call super constructor at end of sub constructor.
+\begin{definition}[Lazy Initialization]
+  Constructing new objects with all of their data and fields may take time, and cause long waits at the start of an application.
+  The idea here is to initialize fields \textit{when they are first used}.
+  This means that many fields may have \cringe{}-types and thus every method that uses a particular field must check that it is indeed not \cringe{} when it tries to use it.
+  If a field is \cringe{} the method is responsible for initializing it.
+  This is a design choice, not a language construct.
+  Consider we define a class aptly named \texttt{Demo} in typical fashion.
+\begin{lstlisting}[language=Java]
+class Demo {
+    private Vector! data;
 
-\subsection{Global Initialization}
+    Demo () {
+        this.data = new Vector();
+    }
 
-If a module A uses a global variable from module B, main needs to init B first.
-In C++ the programmer needs to declare modules in right order.
-In Java static initializers calling static stuff from other class causes problems.
+    public Vector! getData() {
+        return this.data.clone();
+    }
+}
+\end{lstlisting}
+  However if we choose to do lazy initialization our \texttt{Demo} will look more like:
+\begin{lstlisting}[language=Java]
+class Demo {
+    private Vector? data;
+
+    Demo () {
+        // does nothing
+    }
+
+    public Vector! getData() {
+        Vector? d = this.data;
+        if (d = null) {
+            d = new Vector();
+            this.data = d;
+        }
+        return d.clone();
+    }
+}
+\end{lstlisting}
+\end{definition}
+
+\begin{definition}[Array Initialization]
+  It is difficult for a static analyzer to check in a decidable way if all non-\cringe{} members of an array field are properly initialized in a constructor.
+  Array initialization is typically accomplished with loops, but static analyzers have difficulties reasoning about loops.
+  To ensure that all non-\cringe{} members of an array are properly initialized one could:
+  \begin{itemize}
+  \item Assign the field directly rather than each member. \\
+    \texttt{String![]! arr = \{``Hey'', ``Baby''\}}
+  \item Have language support for putting default values into the array (Eiffel).
+  \item Use a \runtimecheck{} at the end of the constructor.
+\begin{lstlisting}[language=Java]
+free String![]! arr = new String![arrLength];
+for (int i; i < arrLength; i++) {
+     arr[i] = i % 2 ? "Even" : "Odd";
+}
+NonNullType.AssertInitialized(arr);
+this.arr = arr;
+\end{lstlisting}
+  \end{itemize}
+  Note that the type rule for array assignment forces right hand side to be committed.
+\end{definition}
+
+Note that we do not allow overloads from differences in construction types. Checkout spec sharp.
+
+
+\begin{remark}\label{remark:superatendofsub}
+  Some of the pitfalls of initialization may be avoided if the call to the super constructor takes place at end of sub constructor.
+\end{remark}
+
+\subsection{Initialization of Global Data}
+
+\epigraph{\itshape Why are we still here? Just to suffer?}{Kazuhira Miller}
+
+\begin{definition}[Design goals for initializing global data]
+  We would like our solution to initialize global data to satisfy the following criteria.
+  \begin{enumerate}
+  \item \textbf{Effectiveness:} We would like to ensure that global data is initialized \textit{before its first access}. For instance we would like ostensibly non-\cringe{} to actually not be \cringe{} when we use it?
+  \item \textbf{Clarity:} The semantics of initialization are simple to reason about.
+  \item \textbf{Laziness:} Global data is initialized \textit{lazily} to reduce boot-up time.
+  \end{enumerate}
+  Since we are in an OOP can you guess which of the above will \textit{not} generally hold?
+\end{definition}
+
+\begin{definition}[Global variables and init methods]\label{def:globalvarinitmethod}
+  Initialization of global variables could be done by \textit{explicit} calls to \texttt{init} methods.
+  These \texttt{init} methods must be called in directly or indirectly from \texttt{main}.
+  If a global variable in module $A$ depends upon a global variable from module $B$, \texttt{main} needs to somehow initialize $B$'s global variables first.
+  Thus it requires (the implementors of) \texttt{main} to know the dependency structure of imported modules.
+  How did we do?
+  \begin{enumerate}
+  \item \textbf{Effectiveness, Strike:} Initialization order needs to be set \textit{manually} by the programmer, and programmers are of course infallible.
+  \item \textbf{Clarity, Strike:} Need to know module dependencies requires non-modular reasoning and violates \textit{information hiding}.
+  \item \textbf{Laziness, Meh:} Possible but also needs to be coded manually.
+  \end{enumerate}
+  Two strikes (one strike is enough to be bad here)!
+\end{definition}
+
+\begin{example}[C++ Initializers]
+  This is more of a variation of \ref{def:globalvarinitmethod} than its own conceptual solution.
+  Here initializers are executed not by but \textit{before} \texttt{main}.
+  No explicit calls to these initializers by the programmer are needed.
+  The order these are executed depends upon \textit{the order they appear in the source code}.
+  Thus the order must again be determined by the programmer.
+  In C++ the programmer needs to declare modules in right order.
+  How did we do this time?
+  \begin{enumerate}
+  \item \textbf{Effectiveness, Strike:} Initialization order needs to be set \textit{manually} by the programmer, and programmers are of course infallible.
+  \item \textbf{Clarity, Strike:} Need to know module dependencies requires non-modular reasoning and violates \textit{information hiding}.
+  \item \textbf{Laziness, Strike:} No support for this.
+  \end{enumerate}
+  Three strikes and this attempt is out!
+\end{example}
+
+\begin{definition}[Static fields and initializers (in Java)]\label{def:staticinit}
+  \texttt{static} fields store references to global data.
+  \texttt{static} initializers are executed by the system \textit{immediately before a class is used at \runtime{}}.
+  Thus initialization happens \textit{lazily}.
+  The \runtime{} systems manages dependencies between modules.
+  However it is possible (in Java) for \texttt{static} initializers and fields in different classes to be \textit{mutually dependent}.
+  As you could expect, this could easily lead to \cringe{}-pointer exceptions.
+  Because \texttt{static} initializers may have arbitrary side effects reasoning about them is \textit{non-modular}.
+  To understand what value a \texttt{static} field will have requires knowing the order initializers are run, which requires executing the program.
+  How did we do this time?
+  \begin{enumerate}
+  \item \textbf{Effectiveness, Strike:} \cringe{}-pointer exceptions are incredibly likely.
+  \item \textbf{Clarity, Strike:} Need to know module dependencies requires non-modular reasoning and violates \textit{information hiding}.
+    Furthermore one needs to effectively execute a program to understand the order initializers will be executed, what values \texttt{static} fields will have, etc.
+  \item \textbf{Laziness, Yes:} Done at the last possible moment.
+  \end{enumerate}
+  Two strikes! Laziness is just a wet blanket here.
+  Basically, in Java \texttt{static} initializers calling \texttt{static} stuff from other class causes problems.
+\end{definition}
+
+\begin{example}[Scala Singletons]
+  Scala provides language support for singletons\footnote{\href{https://en.wikipedia.org/wiki/Singleton_pattern}{A class with a single instance}}.
+  But because these are defined by translation to Java they are glorified examples of \ref{def:staticinit}.
+\end{example}
+
+\begin{definition}[Once Methods (Eiffel)]
+  \texttt{Once} methods are executed exactly twice.
+  Just kidding, they're only executed only once.
+  The \texttt{Result} of the first call is cached and used for all subsequent calls.
+  Thus for all subsequent calls the arguments are ignored.
+  For recursive methods the current value of \texttt{Result} is used.
+  How does this do?
+  \begin{enumerate}
+  \item \textbf{Effectiveness, Strike:} Reading initialized fields is possible.
+  \item \textbf{Clarity, Strike:} Need to know when \texttt{Once} methods were first called and with what values, may be cluttered by concurrency.
+  \item \textbf{Laziness, Yes:} Done at the last possible moment.
+  \end{enumerate}
+  Two strikes!
+  But what were we expecting from Eiffel?
+\end{definition}
+
+Sadly there is no solution (that uses global data) that properly ensures (in particular non-\cringe{}) global data is initialized before it is first used.
+This is especially complicated by mutual dependencies between modules.
 
 \section{Reflection}
 
