@@ -16,6 +16,8 @@
 }
 % \usepackage{multirow}
 \usepackage{macros}
+\usepackage{tikz}
+\usetikzlibrary{trees}
 
 \usepackage{epigraph}
 \setlength{\epigraphwidth}{\textwidth}
@@ -754,6 +756,75 @@ class DecCounter {
   \end{align*}
 \end{example}
 
+\begin{example}[Correctness properties and subtyping trickery]
+  Other than pre- and postconditions, invariants, and history constraints, an exam may ask you to consider some other correctness property and how it should interact with subtyping.
+  The property's definition may seem innocent, and may very well be well-defined on its own.
+  However in the presence of subtyping it may be exploited to build adversarial programs that despite satisfying the basic requirements of this property will misbehave.
+  Consider a property for ensuring that a function will terminate via some \textit{termination measure}.
+  A termination measure must satisfy the following properties.
+  \begin{itemize}
+  \item It is an integer expression.
+  \item It must have a non-negative value in each method call that satisfies the precondition.
+  \item The only variables included are function's parameters.
+  \item A function may only call another if the callee's termination measure is \textit{strictly less}.
+  \end{itemize}
+  A consequence of these rules is that a function may not call another if its termination measure is $0$.
+  Consider the following valid and invalid implementations of a factorial.
+\begin{lstlisting}[language=Java]
+interface Factorial {
+    // requires 0 <= n
+    // decreases n
+    int factorial (int n);
+
+
+}
+
+class ValidFactorial implements Factorial {
+    // requires 0 <= n
+    // decreases n
+    int factorial (int n) {
+        // valid because n - 1 < n /\ 0 <= n - 1
+        return 0 < n ? n * this.factorial(n - 1) : 1;
+    }
+}
+
+class InvalidFactorial1 implements Factorial {
+    // requires 0 <= n
+    // decreases n
+    int factorial (int n) {
+        // invalid because ~ n < n
+        return this.factorial(n);
+    }
+}
+
+class InvalidFactorial1 implements Factorial {
+    // requires 0 <= n
+    // decreases n
+    int factorial (int n) {
+        // invalid because exists n, n - 1 < 0
+        return this.factorial(n - 1);
+    }
+}
+\end{lstlisting}
+  Thus at face value it seems that the given definition is sufficient.
+  However it is possible to write a non-terminating program that satisfies these conditions when we use subtyping.
+  Consider the following;
+\begin{lstlisting}[language=Java]
+class ExploitFactorial implements Factorial {
+    // requires 0 <= n
+    // decreases n + 1
+    int factorial (int n) {
+        Factorial fact = new ExploitFactorial();
+        // valid because n < n + 1 /\ 0 <= n
+        return fact.factorial(n);
+    }
+}
+\end{lstlisting}
+  The above will recurse until stack overflow.
+  To prevent this we need to ensure the following property about a \texttt{decreases} clause.
+  $$\subtype{S}{T} \rightarrow \forall ~ S_m ~ \override{} ~ T_m \rightarrow \pre{T_m} \rightarrow 0 \leq decreases(S_m) \leq decreases(T_m)$$
+\end{example}
+
 \section{Inheritance}
 
 \epigraph{\itshape Inheritance is not a core concept [of OOP].}{Peter M\"uller}
@@ -867,7 +938,7 @@ Given a method call on some \receiver{},
 \item Find the best-matching method based on the \textit{\static{}} type of the \receiver{} and arguments.
 \item Based on the \textit{\dynamic{}} type of \receiver{} see if this method is overriden.
 \end{enumerate}
-This is different in each language. In Java for step 1 any method in the \static{} class and any of its superclass's are equally valid options. In C++ and C\# it starts at the \static{} and goes up the class hierarchy until a suitable method is found.
+This is different in each language. In Java for step 1 any method in the \static{} class and any of its superclass's are equally valid options. In C++ and C\# it starts at the \static{} type of the \reciever{} and goes up the class hierarchy until a suitable method is found.
 This is each languages \textit{overloading resolution}.
 \end{definition}
 
@@ -885,6 +956,119 @@ In general any potentially overriden methods may cause problems. A subclass's be
 In general a superclass does \textit{not} know what method may be invoked at \runtime{} for any overridable method.
 
 In C++ and C\# a superclass may declare a method as \texttt{virtual} if a subclass may override it. In C\# a subclass may specify a method with \texttt{\override{}} if a superclass declares it with \texttt{virutal}. In C\# a subclass may specify a method with \texttt{new} if it wants to specify that the method doesn't have anything to do with the superclass's method; it does not override and it has different behavior.
+
+\begin{example}[Overloading in Java]
+  The below Java code will succeed.
+\begin{lstlisting}[language=Java]
+class Person {
+    protected double salary;
+    
+    public Person(double salary) {
+        this.salary = salary;
+    }
+
+    public boolean haveSameIncome(Person other) {
+        return this.salary == other.getIncome();
+    }
+
+    public double getIncome() {
+        return salary;
+    }
+}
+
+class MarriedPerson extends Person {
+    private double spouseSalary;
+
+    public MarriedPerson(double salary, double spouseSalary) {
+        super(salary);
+        this.spouseSalary = spouseSalary;
+    }
+    
+    public boolean haveSameIncome(MarriedPerson other) {
+        return this.getIncome() == other.getIncome();
+    }
+    
+    public double getIncome() {
+        return ((salary + spouseSalary) / 2);
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Person p1 = new MarriedPerson(0,4);
+        MarriedPerson p2 = new MarriedPerson(2,2);
+        assert p1.getIncome() == p2.getIncome();
+        assert !p1.haveSameIncome(p2);
+    }
+}
+\end{lstlisting}
+  \texttt{p1.haveSameIncome(p2)} is false because when Java decides which method to call it looks first at the \static{} type of the \receiver{} $p_1$.
+  \texttt{Person.haveSameIncome} is not \override{}n by \texttt{MarriedPerson.haveSameIncome} because the parameter types are different.
+  If the parameter type of \texttt{MarriedPerson.haveSameIncome} were \texttt{Person} instead of \texttt{MarriedPerson} then it would be an \override{} and \texttt{p1.haveSameIncome(p2)} would be true.
+  C\# works the same way here.
+\end{example}
+
+\begin{example}[Overloading in Java vs C\#]
+  The following Java code will print ``X''.
+\begin{lstlisting}[language=Java]
+class A {}
+
+class B extends A {}
+
+class X {
+    void foo(B b) {
+        System.out.println("X");
+    }
+}
+
+class Y extends X {
+    void foo(A a) {
+        System.out.println("Y");
+    }
+}
+
+
+public class Main {
+    public static void main(String[] args) {
+        Y y = new Y();
+        y.foo(new B());
+    }
+}
+\end{lstlisting}
+  Even though \static{}ally $y$ is a $Y$ Java will find the most specific method given the \static{} types of the arguments.
+  In this case \texttt{X.foo(B)} is more specific than \texttt{Y.foo(A)}.
+  Conversely the analogous example in C\# will print ``Y''.
+\begin{lstlisting}[language={[Sharp]C}]
+using System;
+
+class A {}
+
+class B : A {}
+
+class X {
+    public virtual void foo(B b) {
+        Console.WriteLine("X");
+    }
+}
+
+class Y : X {
+    public void foo(A a) {
+        Console.WriteLine("Y");
+    }
+}
+
+
+public class Program {
+    public static void Main(string[] args) {
+        Y y = new Y();
+        y.foo(new B());
+    }
+}
+\end{lstlisting}
+  C\# doesn't consider the \static{} type's methods equally to those of its supertypes.
+  It starts at the \static{} type and if it finds a suitable method it chooses that.
+  Note that ``X'' will be printed instead if the \static{} type of $y$ is changed to $X$.
+\end{example}
 
 \subsubsection{Binary Methods and the Visitor Pattern}
 
@@ -1051,6 +1235,72 @@ For instance, it makes sense to say $\subtype{Tabby}{Cat}$ and $\subtype{Tiger}{
 Java and C\# only support single inheritance but using aggregation may simulate single inheritance and interfaces.
 \end{remark}
 
+\begin{example}[Interfaces and subtyping]
+  Sometimes Java is unable to tell \static{}ally if the \dynamic{} type of a term is a subtype of some interface.
+  Consider the following program.
+\begin{lstlisting}[language=Java, numbers=left]
+interface I {
+    int foo ();
+}
+
+class C {}
+
+public class Main {
+    public static C getC() {
+        return new C();
+    }
+
+    public static void main(String[] argv) {
+        C c1 = new C();
+        C c2 = getC();
+
+        I i1 = (I) c1;
+        System.out.println(i1.foo());
+        I i2 = (I) c2;
+        System.out.println(i2.foo());
+    }
+}
+\end{lstlisting}
+  The typechecker accepts the above code, even though $\notsubtype{C}{I}$.
+  At \runtime{} an exception is thrown at line 16 when attempting to cast $c_1$ to an $I$.
+  If lines 16-17 are commented out then at \runtime{} an exception is thrown at line 18 when attempting to cast $c_2$ to an $I$.
+  Why does Java accept this code if obviously $\notsubtype{C}{I}$?
+  Because the \dyanamic{} types of $c_1$ and $c_2$ could be some subtype of $I$.
+  Java opts for flexibility and performs a \textit{\runtimecheck{}} in these cases.
+  This is because Java \textit{does allow} for \textit{multiple subtyping}.
+  For example we could instead have:
+\begin{lstlisting}[language=Java, numbers=left]
+interface I {
+    int foo ();
+}
+
+class C {}
+
+class D extends C implements I {
+    public int foo () { return 0; }
+}
+
+public class Main {
+    public static C getC() {
+        return new D();
+    }
+
+    public static void main(String[] argv) {
+        C c1 = new D();
+        C c2 = getC();
+
+        I i1 = (I) c1;
+        System.out.println(i1.foo());
+        I i2 = (I) c2;
+        System.out.println(i2.foo());
+    }
+}
+\end{lstlisting}
+  The above code compiles and prints $0$ twice.
+  If $I$ had been declared as a class or an abstract class the casts on lines 16 and 18 would have been rejected by the typechecker.
+  This is because Java \textit{does not} allow \textit{multiple subclassing}.
+\end{example}
+
 Multiple inheritance is just bad. Here's why.
 
 \subsubsection{Ambiguities}
@@ -1066,6 +1316,160 @@ By default C++ has \textit{non-virtual} inheritance, where two copies of each $T
 In C++ one may also inherit \textit{virtually}, where only one copy of $Top$ exists in memory and its constructor is just called once.
 In this case, the smallest subclass $S$ must call the constructor for $Top$ directly.
 If there is a constructor for $Top$ without arguments, this will be called first by default. Constructors should not realy upon the virutal superclass constructors they call to maintain invariants.
+
+\begin{example}[Multiple inheritance in C++]
+  Consider the following C++ code that implements an email folder.
+\begin{lstlisting}[language=C++, numbers=left]
+#include <iostream>
+#include <vector>
+
+class Mail {
+    public:
+        bool isHighPriority() { return false; }
+};
+
+// a folder containing e-mails
+class Folder {
+    private:
+        // e-mails in the folder
+        std::vector<Mail> data;
+
+    public:
+        Folder() {
+            std::vector<Mail> mails;
+            this->data = mails;
+            std::cout << "data created" << std::endl;
+        }
+    
+        bool empty() {
+            // returns true iff the folder is empty
+            return this->data.empty();
+        } 
+
+        void enqueue(Mail *m) {
+            // adds an e-mail to the folder
+            this->data.push_back(*m);
+        }
+
+        Mail* dequeue() {
+            if (this->empty()) {
+                // returns null if the folder is empty
+                return nullptr;
+            }
+            // otherwise, returns the top e-mail
+            Mail* top = &(this->data[0]);
+            this->data.erase(this->data.begin());
+            return top;
+        }
+};
+
+// low-priority e-mail filter
+class LowPriority: public virtual Folder {
+    public: LowPriority () {}
+};
+
+// high-priority e-mail filter
+class HighPriority: public virtual Folder {
+    public: HighPriority () {}
+};
+
+// inbox containing all unread e-mails, of any priority
+class Inbox:
+    public LowPriority, public HighPriority, public virtual Folder {
+    public:
+        Inbox () {}
+    
+        bool empty() {
+            return this->Folder::empty();
+        }
+        
+        void enqueue(Mail *m) {
+            this->Folder::enqueue(m);
+        }
+        
+        Mail *dequeue() {
+            return this->Folder::dequeue();
+        }
+};
+
+int main() {
+    Inbox* inbox = new Inbox();
+    return 0;
+}
+\end{lstlisting}
+  The class hierarchy for \texttt{Inbox} goes as:
+  \begin{itemize}
+  \item \texttt{LowPriority} inherits \textit{virtually} from \texttt{Folder}.
+  \item \texttt{HighPriority} inherits \textit{virtually} from \texttt{Folder}.
+  \item \texttt{Inbox} inherits \textit{virtually} from \texttt{Folder}.
+  \item \texttt{Inbox} inherits \textit{non-virtually} from \texttt{LowPriority}.
+  \item \texttt{Inbox} inherits \textit{non-virtually} from \texttt{HighPriority}.
+  \end{itemize}
+  When \texttt{inbox} is initialized, ``data created'' will only be printed once since \texttt{Inbox}, via itself and \texttt{LowPriority} and \texttt{HighPriority} will only have allocated memory for one \texttt{Folder}, since it is inherited virtually.
+  In an instance of \texttt{Inbox} it, its \texttt{LowPriority}, and its \texttt{HighPriority} all share one instance of \texttt{Folder}.
+
+
+  In fact \texttt{Inbox}'s direct virtual inherit from \texttt{Folder} is redundant.
+  If \texttt{Inbox} did not inherit from \texttt{Folder} and say \texttt{LowPriority} instead non-virtually inherited from \texttt{Folder} the there would be ambiguity errors in \texttt{Inbox}'s method's bodies.
+
+
+  If \texttt{Inbox} or \texttt{LowPriority} or \texttt{HighPriority} inherited non-virtually from \texttt{Folder} then the C++ compiler would reject the above code for being ambiguous.
+  \texttt{Inbox} would not be allowed to inherit directly from \texttt{Folder} and even the inner method calls would be ambiguous.
+
+
+  Our code and hierarchy seem fine, but consider the following additions:
+\begin{lstlisting}[language=C++, numbers=left]
+// folder containing all read e-mails
+class Archive: public virtual Folder {
+    public: Archive () {}
+};
+
+class Client: public Inbox, public Archive {
+        public:
+            void receive(Mail *m) { this->Inbox::enqueue(m); }
+            
+            void markAllAsRead() {
+                while (!this->Inbox::empty()) {
+                    Mail *m = this->Inbox::dequeue();
+                    this->Archive::enqueue(m);
+                }
+            }
+};
+
+void clientTest() {
+    Client* client = new Client();
+    client->receive(new Mail());
+    client->markAllAsRead();
+}
+
+int main() {
+    clientTest();
+    return 0;
+}
+\end{lstlisting}
+  The above code will not terminate.
+  To see why let us consider the class hierarchy of \texttt{Archive} and \texttt{Client}.
+  \begin{itemize}
+  \item \texttt{Archive} inherits \textit{virtually} from \texttt{Folder}.
+  \item \texttt{Client} inherits \textit{non-virtually} from \texttt{Inbox}.
+  \item \texttt{Client} inherits \textit{non-virtually} from \texttt{Archive}.
+  \item Via \texttt{Inbox}, \texttt{Client} inherits \textit{non-virtually} from \texttt{LowPriority}.
+  \item Via \texttt{Inbox}, \texttt{Client} inherits \textit{non-virtually} from \texttt{HighPriority}.
+  \item Via \texttt{Inbox}, \texttt{LowPriority}, \texttt{HighPriority}, and \texttt{Archive}, \texttt{Client} inherits \textit{virtually} from \texttt{Folder}. 
+  \end{itemize}
+  Again for an instance of \texttt{Client} there is only one \texttt{Folder} so ``data created'' is printed only once.
+  The code behaves the same way if we again remove \texttt{public virtual Folder} from \texttt{Inbox}.
+  This was probably just meant to confuse people.
+
+  The trouble comes from the invocation \texttt{client->markAllAsRead()}.
+  In fact if \texttt{client->receive(new Mail())} is never called beforehand then \texttt{data} will be empty and the loop will never run.
+  Let us follow the execution in \texttt{clientTest}.
+  \begin{enumerate}
+  \item In line 19 of \texttt{clientTest} \texttt{Client}'s constructor is invoked.
+  \item The default constructor for \texttt{Folder} is called only once, initializing an empty \texttt{data}.
+  \item TODO
+  \end{enumerate}
+\end{example}
 
 \subsection{Linearization}
 
@@ -1100,6 +1504,43 @@ A subclass only has one copy of a superclass in memory. In initialization each c
 \item Traits do not know which methods they \override{}.
 \item Traits do not know \static{}ally which class \texttt{super} calls will go to.
 \end{itemize}
+
+\begin{example}[Traits and (the lack of) \behavioral{} subtyping]
+  One (futile) approach to ensure that traits follow \behavioral{} subtyping is to require that if a class $C$ has a specification $S$, and a trait $T$ extends $C$, then \texttt{C with T} must also abide by $S$.
+  Consider the following counterexample.
+\begin{lstlisting}[language=Scala]
+class C {
+    // ensures x <= result <= x + 2
+    def foo (x : Int) : Int = x + 1
+}
+
+trait T1 extends C {
+    // ensures x <= result <= x + 2
+    override def foo (x : Int) : Int = super.foo(x) + 1
+}
+
+trait T2 extends C {
+    // ensures x <= result <= x + 2
+    override def foo (x : Int) : Int = super.foo(x) + 1
+}
+
+object Main {
+  def main(): Unit = {
+    val a = new C with T1;
+    val b = new C with T2;
+    val x = 1;
+    assert(x <= a.foo(x) && a.foo(x) <= x + 2); // ok
+    assert(x <= b.foo(x) && b.foo(x) <= x + 2); // ok
+    val c = new C with T1 with T2;
+    assert(x <= c.foo(x) && c.foo(x) <= x + 2); // FAILS
+  }
+}
+
+Main.main()
+\end{lstlisting}
+  Even though the postcondition is satisfied for \texttt{C with T1} and \texttt{C with T2} once we mix in multiple traits that satisfy the spec we get problems.
+  Issues with Scala's linearization and \behavioral{} subtyping usually emerge when two traits are mixed in and each interacts with the \texttt{super}'s methods.
+\end{example}
 
 \section{More Typing}
 
@@ -1859,6 +2300,28 @@ public class MyClass {
 }
 \end{lstlisting}
   It was not possible to obtain assurance as to which inference rules are allowed by Java and those that are not so hopefully this example will illuminate any issues.
+\end{example}
+
+\begin{example}[Function composition]
+  One can define a ``general'' signature for the composition of two functions as:
+\begin{lstlisting}[language=Java]
+import java.util.function.Function;
+
+public class MyClass {
+    static <X,Y,Z> Function<X,Z> compose
+    (Function<? super X, ? extends Y> f, Function<? super Y, ? extends Z> g){
+        return (X x) -> {
+            return g.apply(f.apply(x));
+        };
+    }
+    
+    public static void main(String args[]) {
+        Function<Integer, Integer> f = (Integer i) -> { return i; };
+        Function<Number,  Number>  g = (Number n)  -> { return n; };
+        System.out.println(compose(f, g).apply(1));
+    }
+}
+\end{lstlisting}
 \end{example}
 
 \subsubsection{Type Erasure}

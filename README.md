@@ -18,10 +18,8 @@ The material in this study guide was taken from the [course lecture slides by Pe
 
 - Examples for dynamic method binding.
 
-- Linearization examples.
+- Finish email folder example
 
 - Better rust and lifetime examples
 
 - Revisit how new initialization rules prevent problems
-
-- Reflection?
