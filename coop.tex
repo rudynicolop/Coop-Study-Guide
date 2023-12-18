@@ -16,8 +16,8 @@
 }
 % \usepackage{multirow}
 \usepackage{macros}
-\usepackage{tikz}
-\usetikzlibrary{trees}
+% \usepackage{forest}
+% \forestset{qtree edges/.style={for tree={parent anchor=south, child anchor=north}}}
 
 \usepackage{epigraph}
 \setlength{\epigraphwidth}{\textwidth}
@@ -350,7 +350,7 @@ class Value {
     }
 };
 \end{lstlisting}
-  This will immediately fail when we try to perform \texttt{i->init(&x)}.
+  This will immediately fail when we try to perform \texttt{i->init(\&x)}.
   The method will attempt to assign a \texttt{X*} to a \texttt{SubX*}.
   This write fails because $\notsubtype{X}{SubX}$.
   This is equivalent to allowing:
@@ -382,10 +382,10 @@ class Value {
     }
 };
 \end{lstlisting}
-  When \texttt{i->init(&x)} is invoked, \texttt{init} will attempt to read field $a$ from what it thinks is an \texttt{X}.
+  When \texttt{i->init(\&x)} is invoked, \texttt{init} will attempt to read field $a$ from what it thinks is an \texttt{X}.
   But because it is actually a \texttt{SuperX} it does not have an $a$.
   Thus this read fails.
-  Thus the only safe rule for double pointers is an \textit{\invariant{}} one.
+  Thus the only safe rule for double pointers is an \textit{\invar{}} one.
   \begin{mathpar}
     \inferrule*[right=\textsc{InvarDoublePtr}]
     {\subtype{S}{T} \\ \subtype{T}{S}}
@@ -449,7 +449,7 @@ class Value {
 \begin{example}[Dynamic types are screwy]
   If we know that some term $t$ has type $T$, $t : T$, in a normal language without subtyping we can make assumptions about the form $t$ takes.
   However in a setting with subtyping, knowing $t : T$ only tells us that there's some $S$ that $t$ really is, where $\subtype{S}{T}$.
-  Consider a language that has a \texttt{MyType} to represent the \dyanamic{} type of a term.
+  Consider a language that has a \texttt{MyType} to represent the \dynamic{} type of a term.
   We may define:
 \begin{lstlisting}[language=Java]
 class Point {
@@ -476,11 +476,21 @@ class ColorPoint extends Point {
 Point p        = ...;
 ColorPoint cp1 = ...;
 ColorPoint cp2 = ...;
-p.equals(cp1)   // Bad, p may be some other subtype of Point not related to ColorPoint
-p.equals(cp2)   // Bad, p may be some other subtype of Point not related to ColorPoint
-cp1.equals(p)   // Bad, p could be Point and cp1 could be ColorPoint
-cp2.equals(cp1) // Bad, cp2 could be some other subtype of ColorPoint
-cp1.equals(cp2) // Bad, cp1 could be some other subtype of ColorPoint
+
+// Bad, p may be some other subtype of Point not related to ColorPoint
+p.equals(cp1)
+
+// Bad, p may be some other subtype of Point not related to ColorPoint
+p.equals(cp2)
+
+// Bad, p could be Point and cp1 could be ColorPoint
+cp1.equals(p)
+
+// Bad, cp2 could be some other subtype of ColorPoint
+cp2.equals(cp1)
+
+// Bad, cp1 could be some other subtype of ColorPoint
+cp1.equals(cp2) 
 \end{lstlisting}
   What if we make \texttt{ColorPoint} \texttt{final}; that is no class may \texttt{extend} \texttt{ColorPoint}.
 \begin{lstlisting}[language=Java]
@@ -496,11 +506,21 @@ final class ColorPoint extends Point {
 Point p        = ...;
 ColorPoint cp1 = ...;
 ColorPoint cp2 = ...;
-p.equals(cp1)   // Bad, p may be some other subtype of Point not related to ColorPoint
-p.equals(cp2)   // Bad, p may be some other subtype of Point not related to ColorPoint
-cp1.equals(p)   // Bad, p could be Point and cp1 could be ColorPoint
-cp2.equals(cp1) // Okay, both must be ColorPoint
-cp1.equals(cp2) // Okay, both must be ColorPoint
+
+// Bad, p may be some other subtype of Point not related to ColorPoint
+p.equals(cp1)
+
+// Bad, p may be some other subtype of Point not related to ColorPoint
+p.equals(cp2)
+
+// Bad, p could be Point and cp1 could be ColorPoint
+cp1.equals(p)
+
+// Okay, both must be ColorPoint
+cp2.equals(cp1)
+
+// Okay, both must be ColorPoint
+cp1.equals(cp2) 
 \end{lstlisting}
   Instead what if we could guarantee that a term has \textit{exactly} its declared type.
   Say the syntax is \texttt{@T t} where $t$ dynamically does not have a subtype of $T$.
@@ -509,11 +529,21 @@ cp1.equals(cp2) // Okay, both must be ColorPoint
 @Point p        = ...;
 @ColorPoint cp1 = ...;
 ColorPoint cp2  = ...;
-p.equals(cp1)   // Okay, p must be Point
-p.equals(cp2)   // Okay, p must be Point
-cp1.equals(p)   // Bad, p is Point and cp1 is ColorPoint
-cp2.equals(cp1) // Bad, cp2 could be some other subtype of ColorPoint
-cp1.equals(cp2) // Okay, cp1 must be ColorPoint
+
+// Okay, p must be Point
+p.equals(cp1)
+
+// Okay, p must be Point
+p.equals(cp2)
+
+// Bad, p is Point and cp1 is ColorPoint
+cp1.equals(p)
+
+// Bad, cp2 could be some other subtype of ColorPoint
+cp2.equals(cp1)
+
+// Okay, cp1 must be ColorPoint
+cp1.equals(cp2) 
 \end{lstlisting}
 \end{example}
 
@@ -631,7 +661,7 @@ class DecCounter {
   Each is acceptable as a unique key generator, but neither is a behavioral subtype of the other.
   We may unify each with a common abstract class.
   A first attempt at generalizing some transitive relation to be used for uniqueness and a reflexive closure of that relation is as follows.
-\begin{lstlisting}
+\begin{lstlisting}[language=Java]
 abstract class GenerateUniqueKey {
     // constraint reflTransRel(old(key),key)
     int key;
@@ -685,7 +715,7 @@ class DecCounter extends GenerateUniqueKey {
 }
 \end{lstlisting}
   A more precise version is as follows.
-\begin{lstlisting}
+\begin{lstlisting}[language=Java]
 abstract class GenerateUniqueKey {
      // constraint forall z, old(used(z)) -> used(z)
 
@@ -747,7 +777,7 @@ class DecCounter {
   We can demonstrate that \texttt{DecCounter}'s history constraint is okay similarly.
   We can also show that \texttt{IncCounter.generate}'s postcondition is stronger than \texttt{GenerateUniqueKey.generate}'s.
   \begin{align*}
-    &\vdash key = \old{key} + 1 \wedge result = \old{key} \rightarrow \neg \old{used(result)} \wedge used(result) \\
+    \vdash key = \old{key} + 1 \wedge result = \old{key} &\rightarrow \neg \old{used(result)} \wedge used(result) \\
     key = \old{key} + 1, result = \old{key} &\vdash \neg \old{used(result)} \wedge used(result) \\
     key = \old{key} + 1, result = \old{key} &\vdash \neg \old{result < key} \wedge result < key \\
     key = \old{key} + 1, result = \old{key} &\vdash \neg result < \old{key} \wedge result < key \\
@@ -938,7 +968,7 @@ Given a method call on some \receiver{},
 \item Find the best-matching method based on the \textit{\static{}} type of the \receiver{} and arguments.
 \item Based on the \textit{\dynamic{}} type of \receiver{} see if this method is overriden.
 \end{enumerate}
-This is different in each language. In Java for step 1 any method in the \static{} class and any of its superclass's are equally valid options. In C++ and C\# it starts at the \static{} type of the \reciever{} and goes up the class hierarchy until a suitable method is found.
+This is different in each language. In Java for step 1 any method in the \static{} class and any of its superclass's are equally valid options. In C++ and C\# it starts at the \static{} type of the \receiver{} and goes up the class hierarchy until a suitable method is found.
 This is each languages \textit{overloading resolution}.
 \end{definition}
 
@@ -1265,7 +1295,7 @@ public class Main {
   At \runtime{} an exception is thrown at line 16 when attempting to cast $c_1$ to an $I$.
   If lines 16-17 are commented out then at \runtime{} an exception is thrown at line 18 when attempting to cast $c_2$ to an $I$.
   Why does Java accept this code if obviously $\notsubtype{C}{I}$?
-  Because the \dyanamic{} types of $c_1$ and $c_2$ could be some subtype of $I$.
+  Because the \dynamic{} types of $c_1$ and $c_2$ could be some subtype of $I$.
   Java opts for flexibility and performs a \textit{\runtimecheck{}} in these cases.
   This is because Java \textit{does allow} for \textit{multiple subtyping}.
   For example we could instead have:
@@ -1407,6 +1437,7 @@ int main() {
   \end{itemize}
   When \texttt{inbox} is initialized, ``data created'' will only be printed once since \texttt{Inbox}, via itself and \texttt{LowPriority} and \texttt{HighPriority} will only have allocated memory for one \texttt{Folder}, since it is inherited virtually.
   In an instance of \texttt{Inbox} it, its \texttt{LowPriority}, and its \texttt{HighPriority} all share one instance of \texttt{Folder}.
+  Note that \texttt{Inbox}'s methods \textit{do not \override{}} \texttt{Folder}'s.
 
 
   In fact \texttt{Inbox}'s direct virtual inherit from \texttt{Folder} is redundant.
@@ -1457,6 +1488,32 @@ int main() {
   \item Via \texttt{Inbox}, \texttt{Client} inherits \textit{non-virtually} from \texttt{HighPriority}.
   \item Via \texttt{Inbox}, \texttt{LowPriority}, \texttt{HighPriority}, and \texttt{Archive}, \texttt{Client} inherits \textit{virtually} from \texttt{Folder}. 
   \end{itemize}
+
+  % \begin{figure}
+  %   \centering
+  %   \begin{forest}
+  %     qtree edges
+  %     [Folder, name=Folder
+  %     [LowPriority, name=LowPriority ]
+  %     [HighPriority, name=HighPriority
+  %     [Inbox, name=Inbox
+  %     [, no edge ]
+  %     [Client, name=Client ]]
+  %     [, no edge ]]
+  %     [Archive, name=Archive ]]
+  %     \draw (Folder.south) -- (Inbox.north);
+  %     % \draw (LowPriority.south) -- (Inbox.north);
+  %     % \draw (Archive.south) -- (Client.north);
+      
+  %     % [Y
+  %     % [Z ]
+  %     % [X,name=X [A  [B ] [C, name=C ]]
+  %     % [A, name=A2  [, no edge ] [B ]]]]
+  %     % \draw (A2.south) -- (C.north);
+  %   \end{forest}
+  %   \caption{Email folder class hierarchy.}
+  %   \label{fig:emailfromhell}
+  % \end{figure}
   Again for an instance of \texttt{Client} there is only one \texttt{Folder} so ``data created'' is printed only once.
   The code behaves the same way if we again remove \texttt{public virtual Folder} from \texttt{Inbox}.
   This was probably just meant to confuse people.
@@ -1465,18 +1522,145 @@ int main() {
   In fact if \texttt{client->receive(new Mail())} is never called beforehand then \texttt{data} will be empty and the loop will never run.
   Let us follow the execution in \texttt{clientTest}.
   \begin{enumerate}
-  \item In line 19 of \texttt{clientTest} \texttt{Client}'s constructor is invoked.
+  \item On line 19 in \texttt{clientTest} \texttt{Client}'s constructor is invoked.
   \item The default constructor for \texttt{Folder} is called only once, initializing an empty \texttt{data}.
-  \item TODO
+  \item The default constructor for \texttt{LowPriority} is called only once.
+  \item The default constructor for \texttt{HighPriority} is called only once.
+  \item The default constructor for \texttt{Inbox} is called only once.
+  \item The default constructor for \texttt{Archive} is called only once.
+  \item The call stack returns to \texttt{clientTest}.
+  \item On line 20 in \texttt{clientTest} \texttt{Client.recieve} is invoked.
+  \item On line 8 in \texttt{Client.recieve} \texttt{this->Inbox::enqueue(m)} is invoked.
+  \item On line 65 in \texttt{Inbox.enqueue} \texttt{this->Folder::enqueue(m)} is invoked.
+  \item On line 29 in \texttt{Folder.enqueue} \texttt{this->data.push\_back(*m)} is invoked.
+  \item The call stack returns to \texttt{clientTest}.
+  \item On line 21 in \texttt{clientTest} \texttt{client->markAllAsRead()} is invoked.
+  \item On line 11 in \texttt{Client.markAllAsRead} \texttt{this->Inbox::empty()} is invoked.
+  \item On line 61 in \texttt{Inbox.empty} \texttt{this->Folder::empty()} is invoked.
+  \item On line 24 in \texttt{Folder.empty} \texttt{this->data.empty()} is invoked and returns \texttt{false}.
+  \item The call stack returns to \texttt{Client.markAllAsRead}, and the guard of the loop is \texttt{true}.
+  \item On line 12 in \texttt{Client.markAllAsRead} \texttt{this->Inbox::dequeue()} is invoked.
+  \item On line 69 in \texttt{Inbox.dequeue} \texttt{this->Folder::dequeue()} is invoked.
+  \item In \texttt{Folder.dequeue} the \texttt{Mail} that was initially put in \texttt{data} is popped out and returned.
+  \item The call stack returns to \texttt{Client.markAllAsRead}, and \texttt{mail} is assigned to the returned \texttt{Mail}.
+  \item On line 13 in \texttt{Client.markAllAsRead} \texttt{this->Archive::enqueue(m)} is invoked.
+  \item \texttt{Archive.enqueue} \textit{is} \texttt{Folder.enqueue}.
+  \item In \texttt{Folder.enqueue} the \texttt{Mail} is added to \textit{the same data}.
+  \item The call stack returns to \texttt{Client.markAllAsRead}.
+  \item We loop to step 14.
   \end{enumerate}
+  The code is attempting to ``\textit{read}'' each email from the inbox folder and then archive it.
+  But because \texttt{Client}'s \texttt{Inbox} and \texttt{Archive} share the same \texttt{Folder} with the same \texttt{data}, the same mail keeps being pushed on and popped off the same stack and no progress is made reading through the emails.
+  This example was designed to overwhelm the reader with extraneous classes and inheritance annotations.
+  The following minimal example has the same behavior.
+\begin{lstlisting}[language=C++]
+#include <iostream>
+#include <vector>
+
+class Mail {};
+
+// a folder containing e-mails
+class Folder {
+    private:
+        // e-mails in the folder
+        std::vector<Mail> data;
+
+    public:
+        Folder() {
+            std::vector<Mail> mails;
+            this->data = mails;
+            std::cout << "Folder init" << std::endl;
+        }
+    
+        bool empty() {
+            // returns true iff the folder is empty
+            return this->data.empty();
+        } 
+
+        void enqueue(Mail *m) {
+            // adds an e-mail to the folder
+            this->data.push_back(*m);
+        }
+
+        Mail* dequeue() {
+            if (this->empty()) {
+                // returns null if the folder is empty
+                return nullptr;
+            }
+            // otherwise, returns the top e-mail
+            Mail* top = &(this->data[0]);
+            this->data.erase(this->data.begin());
+            return top;
+        }
+};
+
+// inbox containing all unread e-mails, of any priority
+class Inbox:
+    public virtual Folder {
+    public:
+        Inbox () {
+            std::cout << "Inbox init" << std::endl;
+        }
+    
+        bool empty() {
+            return this->Folder::empty();
+        }
+        
+        void enqueue(Mail *m) {
+            this->Folder::enqueue(m);
+        }
+        
+        Mail *dequeue() {
+            return this->Folder::dequeue();
+        }
+};
+
+class Archive: public virtual Folder {
+    public: Archive () {
+        std::cout << "Archive init" << std::endl;
+    }
+};
+
+class Client: public Inbox, public Archive {
+        public:
+            Client () {
+                std::cout << "Client init" << std::endl;
+            }
+        
+            void receive(Mail *m) { this->Inbox::enqueue(m); }
+            
+            void markAllAsRead() {
+                while (!this->Inbox::empty()) {
+                    Mail *m = this->Inbox::dequeue();
+                    this->Archive::enqueue(m);
+                }
+            }
+};
+
+void clientTest() {
+    Client* client = new Client();
+    client->receive(new Mail());
+    client->markAllAsRead();
+}
+
+int main() {
+    clientTest();
+    return 0;
+}
+\end{lstlisting}
+  In these examples it is best to start by diagraming the inheritance structure, and then running the code.
 \end{example}
+
+\begin{remark}
+  In C++, when a virtual class is extended by two subclasses, it doesn't matter the order of the other specified class extensions, the virtual classes are always instantiated before the others.
+\end{remark}
 
 \subsection{Linearization}
 
 Scala has \textit{mixins} or \textit{traits} that may help specialize classes. Traits extend exactly one superclass and some number of traits. When mixing in a trait in a class declaration the class \textit{must} be a subclass of the direct superclass of each trait.
 
 \begin{remark}\label{remark:linearremark}
-$$forall ~ \text{classes} ~ C, \text{traits} ~ T ~ \text{s.t.} ~ T ~ extends ~ C, \subtype{T}{C}$$
+$$\forall ~ \text{classes} ~ C, \text{traits} ~ T ~ \text{s.t.} ~ T ~ extends ~ C, \subtype{T}{C}$$
 \end{remark}
 
 The dynamic dispatch order is determined by \textit{linearization}.
@@ -3096,7 +3280,7 @@ class Subject extends Thread {
   \item In \texttt{Demo}'s constructor \texttt{this} is registered as an observer.
   \item In \texttt{Subject.register} out object under construction is added to \texttt{observers}.
   \item Our constructor's execution is preempted by the thread calling \texttt{Subject.run}.
-  \item \texttt{update} is called upon our object under constructor, which is \dyanamic{}ally bound to that in \texttt{SubDemo}.
+  \item \texttt{update} is called upon our object under constructor, which is \dynamic{}ally bound to that in \texttt{SubDemo}.
   \item In \texttt{Subject.update} \texttt{this.data.size()} is invoked.
   \item But \texttt{this.data} is still \cringe{}, so a \cringe{}-pointer exception is thrown.
   \end{enumerate}
