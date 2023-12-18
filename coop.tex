@@ -1858,7 +1858,7 @@ To start out we want the stack to be empty, and the registers to contain the kno
 \While{$worklist \neq \emptyset$}
 \State $p \gets \min{worklist}$
 \State $worklist \gets worklist \setminus \{ p \}$
-\State $\instr{}(p) : \wkin{p} \rightarrow \wkout{p}$
+\State $\instr{}(p) : \wkin{p} \rightarrow \wkout{p}$ \Comment{Apply rule to get $\wkout{p}$}
 \ForAll{$q$ succeeding $p$}
     \State $\wkin{q} \gets \wkin{q} \sqcup \wkout{p}$
     \If{$\wkin{q}$ has changed}
@@ -1957,7 +1957,31 @@ goto 1;
   \item The worklist is empty, so the algorithm is done.
   \end{enumerate}
 \end{example}
-  
+
+Since Java 6 there is a typechecking algorithm instead.
+Type information may be included in each bytecode instruction.
+However it \textit{requires} that the start of each
+\textit{basic block}\footnote{Instructions are partitioned into different blocks such that only the last instruction of a block may jump to the start of another block.}
+has type information.
+This typechecking approach avoids the worklist algorithm and the interface problem, since the computation of joins is no longer necessary.
+The typechecking algorithm is given in \ref{alg:checking}.
+
+\begin{algorithm}
+\caption{JVM Type Checking}\label{alg:checking}
+\begin{algorithmic}
+  \ForAll{basic blocks of a method body}
+    \State $in \gets types(start)$ \Comment{Type info from block start.}
+    \ForAll{$i$ | $\instr{}(i)$ is an instruction in the basic block}
+      \State $in \gets apply\_rule(intstr{}(i), in)$ \Comment{Apply rule to get $in$ for successors}
+      \ForAll{$q$ succeeding $i$}
+        \If{$types(q)$ declared}
+          \State check $\subtype{in}{types(q)}$ \Comment{Requires the same length}
+        \EndIf
+      \EndFor
+    \EndFor
+  \EndFor
+\end{algorithmic}
+\end{algorithm}
 
 \subsection{Parametric Polymorphism}
 
@@ -2031,6 +2055,115 @@ interface Comparison[-A] {
 }
 \end{lstlisting}
 Here \texttt{A} is only used as a method parameter to be written to, i.e. a negative positive.
+\end{example}
+
+\begin{example}[Logger: constraints on type bounds.]
+  Java rejects the following definition of \texttt{Logger}.
+\begin{lstlisting}[language=Java, numbers=left]
+class Logger<T> {
+    public void log(T t) {
+        System.out.println(t.loggerString());
+    }
+}
+
+public class Program {
+    public static void main(String args[]) {
+        Logger<Integer> logger = new Logger<Integer>();
+        logger.log(42);
+    }
+}
+\end{lstlisting}
+  This is because Java does not know whether $T$ has a \texttt{loggerString()} method.
+  If the typechecker accepted the above then a runtime error would be thrown when we try to execute line 10.
+  We need to \textit{constrain} $T$ in \texttt{Logger}'s definition so that we know it has a \texttt{loggerString()} method.
+  This is called \textit{bounded polymorphism}.
+  We can adjust the above example with the following.
+\begin{lstlisting}[language=Java]
+interface Loggable {
+    String loggerString();
+}
+
+class LoggableInt implements Loggable {
+    private int z;
+    
+    public LoggableInt(int z) {
+        this.z = z;
+    }
+    
+    public String loggerString() {
+        return Integer.toString(this.z);
+    }
+}
+
+class Logger<T extends Loggable> {
+    public void log(T t) {
+        System.out.println(t.loggerString());
+    }
+}
+
+public class Program {
+    public static void main(String args[]) {
+        Logger<LoggableInt> logger = new Logger<LoggableInt>();
+        logger.log(new LoggableInt(42));
+    }
+}
+\end{lstlisting}
+  Now the example typechecks and prints ``42'' as desired.
+  Since $T$ only occurs in \textit{negative} positions in \texttt{Logger},
+  allowing \contra{} subtyping for instances of \texttt{Logger} would be safe, even though Java does not allow it.
+  The below would be ok at \runtime{} if $\subtype{B}{A}$.
+\begin{lstlisting}[language=Java]
+void foo(Logger<A> logA) {
+    Logger<B> logB = logA;
+    logB.log(new B());
+}
+\end{lstlisting}
+  If Java allowed \contra{} generics then \runtimecheck{}s would be needed to ensure that reads of values expected to $T$ (from fields or method calls) are actually subtypes of the expected type.
+\end{example}
+
+\begin{example}[Recursively-defined constraints]
+  Sometimes when declaring a generic class it needs itself as one of the bounds for a type variable.
+  This is particularly common for binary methods.
+  Consider the following attempt at an abstract class \texttt{Comparable}.
+\begin{lstlisting}[language=Java, numbers=left]
+public abstract class Comparable<T> {
+    public abstract int compareTo(T other);
+    public boolean greaterThan(T other) {
+        return other.compareTo(this) < 0;
+    }
+}
+\end{lstlisting}
+  Java's typechecker rejects the above because on line 4 $T$ may not have a \texttt{compareTo} method.
+  Thus we need to constraint $T$ by \texttt{Comparable}, the class being defined.
+  A first attempt is to do the following:
+\begin{lstlisting}[language=Java, numbers=left]
+abstract class Comparable<T extends Comparable<T>> {
+    public abstract int compareTo(T other);
+    public boolean greaterThan(T other) {
+        return other.compareTo(this) < 0;
+    }
+}
+\end{lstlisting}
+  Java's typechecker still rejects this because on line 4 we pass \texttt{this} of type \texttt{Comparable<T>} into \texttt{compareTo} which expects a $T$.
+  Thus also need to modify \texttt{compareTo}'s signature.
+\begin{lstlisting}[language=Java, numbers=left]
+abstract class Comparable<T extends Comparable<T>> {
+    public abstract int compareTo(Comparable<T> other);
+    public boolean greaterThan(T other) {
+        return other.compareTo(this) < 0;
+    }
+}
+\end{lstlisting}
+  We can avoid changing the signatures by doing:
+\begin{lstlisting}[language=Java,numbers=left]
+abstract class Comparable<T> {
+    public abstract int compareTo(T other);
+    public boolean greaterThan(T other) {
+        return 0 < this.compareTo(other);
+    }
+}
+\end{lstlisting}
+  This notion of recursive type constraints is \textit{F-bounded-polymorphism}.
 \end{example}
 
 When we are stuck with $\invar{}$ generics how do we write code that works with different instantiations of a type parameter?
@@ -2508,6 +2641,126 @@ public class MyClass {
 \end{lstlisting}
 \end{example}
 
+\begin{example}[Concatenating Lists]
+  Given a List interface in Java:
+\begin{lstlisting}[language=Java]
+interface List<T> {
+    public int length();
+    public T read(int z);
+    public void write(T t);
+    default public void writeAll(List<? extends T> ts) {
+        for (int z = 0; z < ts.length(); z++) {
+            this.write(ts.read(0));
+        }
+    }
+}
+\end{lstlisting}
+  We can write a \texttt{Concat} class that concatenates two lists with a separator in between.
+  Here we have four different implementations of a ``concat'' operation each with varying permissiveness in the types of their arguments.
+\begin{lstlisting}[language=Java]
+class Concat<A> {
+    public void concat(A sep, List<A> from, List<A> to) {
+        to.write(sep);
+        to.writeAll(from);
+    }
+    
+    public void concatA1(A sep, List<? extends A> from, List<? super A> to) {
+        to.write(sep);
+        to.writeAll(from);
+    }
+    
+    public <B extends A> void
+    concatA2(B sep, List<B> from, List<A> to) {
+        to.write(sep);
+        to.writeAll(from);
+    }
+    
+    public <B extends A, C extends B> void
+    concatA3(B sep, List<C> from, List<B> to) {
+        to.write(sep);
+        to.writeAll(from);
+    }
+}
+\end{lstlisting}
+  \texttt{concat} is easily the most restrictive. The argument for \texttt{sep} may have any subtype of $A$.
+  However arguments for \texttt{from} and \texttt{to} must have \textit{exactly} the type $\generic{List}{A}$.
+  This is because generics in Java are \textit{\invar{}}.
+
+  \texttt{concatA1} allows for \texttt{from} to have \textit{use-site covariance} and \texttt{to} to have \textit{use-site contravariance}.
+  This is because we would like to \textit{read} from \texttt{from} and \textit{write to} \texttt{to}.
+  However \texttt{concatA1} is still limited in that the type of any argument for \texttt{to} must be a supertype of $\generic{List}{A}$.
+  It does not allow one to pass in an argument for \texttt{to} that has a strict subtype of $\generic{List}{A}$.
+
+
+  \texttt{concatA2} allows the type for \texttt{from} to be a subtype of $A$.
+  However the type of \texttt{to} still must be exactly $\generic{List}{A}$.
+
+  \texttt{concatA3} allows for the type of \texttt{to} to be a subtype of $\generic{List}{A}$.
+  Furthermore the type of \texttt{from} may be any subtype of that.
+  However the argument of \texttt{to} may not have a strict supertype of $\generic{List}{A}$.
+
+  Thus \texttt{concatA1}, \texttt{concatA2}, and \texttt{concatA3} are all more permissive than \texttt{concat}.
+  \texttt{concatA3} is definitely more permissive than \texttt{concatA2}.
+  Consider:
+\begin{lstlisting}[language=Java]
+// Z <: Y
+static void A2vsA3(Concat<Y> yc, Z z, List<Z> zs) {
+    // ok
+    yc.concatA3(z, zs, zs);
+
+    // BAD
+    yc.concatA2(z, zs, zs);
+}
+\end{lstlisting}
+  \texttt{concatA1} and \texttt{concatA3} are incomparable.
+  Consider:
+\begin{lstlisting}[language=Java]
+// Z <: Y <: X
+static void A1vsA3(Concat<Y> yc, Y y, Z z, List<X> xs, List<Z> zs) {
+    // ok
+    yc.concatA1(y, zs, xs);
+
+    // BAD
+    yc.concatA3(y, zs, xs);
+
+    // ok    
+    yc.concatA3(z, zs, zs);
+
+    // BAD
+    yc.concatA1(z, zs, zs);
+}
+\end{lstlisting}
+
+  For the sake of argument we could consider what if Java had Scala-like variance annotations.
+  We could accomplish something equally as permissive as \texttt{concatA1} if we add some more interfaces.
+\begin{lstlisting}[language=Java]
+interface ReadList<+T> {
+    public int length();
+    public T read(int z);
+}
+
+interface WriteList<-T> {
+    public void write(T t);
+    default public void writeAll(ReadList<? extends T> ts) {
+        for (int z = 0; z < ts.length(); z++) {
+            this.write(ts.read(0));
+        }
+    }
+}
+
+interface List<T> extends ReadList<T>, WriteList<T> {}
+
+class Concat<A> {
+    public void concatB(A sep, ReadList<A> from, WriteList<A> to) {
+        to.write(sep);
+        to.writeAll(from);
+    }
+}
+\end{lstlisting}
+  \texttt{concatA1} and \texttt{concatB} are both equally permissive because they each have the same variance restrictions for their arguments.
+  \texttt{concatA1} employs use-site variance whereas \texttt{concatB} relies upon the declared variance annotations.
+\end{example}
+
 \subsubsection{Type Erasure}
 
 For backwards compatibility, Sun did not want to change the JVM after generics were introduced. So generic type information is erased by the compiler. $\generic{G}{T}$ becomes just $G$ in java bytecode. Occasionally the compiler needs to insert casts to the class used for the type argument for instances of generic types. Because of this, Java disallows the following:
@@ -2538,11 +2791,156 @@ In Java one can resolve the issue by giving the type parameters different upper 
 
 In Java static fields are shared by all instantiations of a generic class, but not in C\#.
 
+\begin{example}[Lower bounds in Scala]
+  Java only allows type variables to have upper bounds.
+  However Scala allows lower bounds on type variables.
+  Scala's type system does not even bother to check if the lower bound is respected!
+  Even if it did it would have to deal with erasure at the bytecode level,
+  and the bytecode verifier could not check if lower bounds are respected.
+  Scala accepts the following nonsense:
+\begin{lstlisting}[language=Scala]
+// X must be a supertype of String.
+class Foo[X >: String](val str : X)
+// Scala doesn't care LOL
+val a = new Foo(1)
+print(a.str)
+\end{lstlisting}
+\end{example}
+
 \subsubsection{C++ Templates}
 
 In C++ one provides type parameters to classes and methods via \textit{templates}. As you will see, intuitively templates are glorified macros.
 
 Every time a template is instantiated the C++ generates an instantiated version of the code for the class or method for the given type arguments. This causes \textit{code bloat}. Furthermore C++ templates are not typechecked. Only the parts of instance classes that get used after the class is instantiated get typechecked. In principle one could make all kinds of assumptions about the type parameter in a template class (about what methods and fields it has) and C++ will not complain unless its instantiation doesn't provide suitable type arguments.
+
+\begin{example}[Simulating mixins in C++]
+  In C++ it is possible to emulate the functionality of Scala's mixins via templates.
+  This is done by having a template class inherit from its own template parameter.
+\begin{lstlisting}[language=C++]
+template <typename T> class Mixin : public T { ... }
+\end{lstlisting}
+  This technique may be used to write ``mixins'' for a \texttt{Cell} class.
+\begin{lstlisting}[language=C++]
+class Cell {
+    private: int z;
+    
+    public:
+        Cell(int z) {
+            this->z = z;
+        }
+        
+        virtual int read() {
+            return this->z;
+        }
+        
+        virtual void write(int z) {
+            this->z = z;
+        }
+};
+
+template<typename C> class Doubling : public C {
+    public:
+        Doubling(int z) : C(z) {}
+        
+        virtual void write(int z) {
+            this->C::write(2 * z);
+        }
+};
+
+template<typename C> class Counting : public C {
+    private:
+        int counter;
+    public:
+        Counting(int z) : C(z) {
+            this->counter = 0;
+        }
+        
+        virtual int read() {
+            counter++;
+            return this->C::read();
+        }
+        
+        virtual int num_read() {
+            return this->counter;
+        }
+};
+\end{lstlisting}
+  C++ does not place any restrictions on the type parameters.
+  C++ allows us to declare the above template classes with calls such as \texttt{this->C::read()} even though it has no idea whether $C$ will have such a method.
+  By instantiating \texttt{Doubling} or \texttt{Counting} with \texttt{Cell} we can obtain mixin-behavior.
+\begin{lstlisting}[language=C++]
+int main() {
+    Cell* cell = new Cell(2);
+    cell->write(5);
+    cout << cell->read() << endl;
+    
+    Doubling<Cell>* dc = new Doubling<Cell>(2);
+    dc->write(5);
+    cout << dc->read() << endl;
+    
+    Counting<Cell>* cc = new Counting<Cell>(2);
+    cout << cc->num_read() << endl;
+    cout << cc->read() << endl;
+    cout << cc->num_read() << endl;
+    cout << cc->read() << endl;
+    cout << cc->num_read() << endl;
+    
+    Doubling<Counting<Cell>>* dcc = new Doubling<Counting<Cell>>(2);
+    cout << dcc->num_read() << endl;
+    cout << dcc->read() << endl;
+    cout << dcc->num_read() << endl;
+    dcc->write(5);
+    cout << dcc->read() << endl;
+    cout << dcc->num_read() << endl;
+    
+    Counting<Doubling<Cell>>* cdc = new Counting<Doubling<Cell>>(2);
+    cout << cdc->num_read() << endl;
+    cout << cdc->read() << endl;
+    cout << cdc->num_read() << endl;
+    cdc->write(5);
+    cout << cdc->read() << endl;
+    cout << cdc->num_read() << endl;
+    
+    Doubling<Doubling<Cell>>* ddc = new Doubling<Doubling<Cell>>(2);
+    ddc->write(5);
+    cout << ddc->read() << endl;
+
+    return 0;
+}
+\end{lstlisting}
+  Note that \texttt{Doubling} may be ``mixed-in'' more than once!
+  In order to get similar behavior in Scala we needed to copy paste a trait and change the name.
+  However the lack of type safety may come back to haunt us.
+  If we declare some empty class and try to instantiate \texttt{Doubling} the typechecker will reject it.
+\begin{lstlisting}[language=C++]
+class Empty {
+    public:
+        Empty(int z) {}
+};
+
+int main() {
+    Doubling<Empty>* de = new Doubling<Empty>(2); // C++ says NO.
+    return 0;
+}
+\end{lstlisting}
+  However if we adjust \texttt{Empty} to just have a \texttt{write} method, C++ will be ok.
+\begin{lstlisting}[language=C++]
+class Empty {
+    public:
+        Empty(int z) {}
+        
+        virtual void write(int z) {}
+    
+};
+
+int main() {
+    Doubling<Empty>* de = new Doubling<Empty>(2); // C++ says yes.
+    cout << de->read() << endl;                   // C++ says NO.
+    return 0;
+}
+\end{lstlisting}
+  Only once we attempt to use a method \texttt{Doubling} doesn't have nor inherit will C++ complain.
+\end{example}
 
 C++ later added \textit{concepts}.
 Concepts provide a way to specify constraints about a template's type parameter. These constraints are checked upon instantiation.
@@ -2589,6 +2987,14 @@ Java offers the following access modifiers:
 \item \texttt{protected}: These fields and methods are available to classes in the same package and any potential subclasses. Thus they may be \override{}n.  Available in the subclass and friend interface.
 \item \texttt{public}: Everyone and their mother has access to these fields and methods. Of course may be \override{}n.
 \end{itemize}
+
+\begin{remark}
+  The default visibility of methods in Java interfaces is \texttt{public}.
+\end{remark}
+
+\begin{remark}
+  Methods in abstract classes may not be \texttt{private}.
+\end{remark}
 
 Question: how do access modifiers interact with overloading?
 
