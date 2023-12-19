@@ -73,7 +73,7 @@ Language concepts:
 Methods are invoked on a \receiver{} object:
 \begin{example}[\receiver{}s]
 Imagine there is a dog class and a human class. Here the dog instance is the \receiver{}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
     Dog dog = new Dog();
     Human human = new Human();
     dog.peeOn(human);
@@ -106,7 +106,7 @@ Sometimes \textit{\runtimecheck{}s} are needed even in so-called ``\static{}" la
 
 \begin{example}[Downcasts]
 Downcasts could fail so they need a \runtimecheck{}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 String foo(Object o){
     String s = (String) o;
     return s;
@@ -190,7 +190,7 @@ In OO this applies to methods.
 
 \begin{example}[Why \contra{} parameters?]
 Consider the following:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class Animal {}
 
 class Cat <: Animal {
@@ -208,13 +208,13 @@ class CatLover <: Human {
 }
 \end{lstlisting}
 We could have client code:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 void client(Human h) {
     h.pet(new Animal())
 }
 \end{lstlisting}
 That is called as:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 client(new CatLover());
 \end{lstlisting}
 \end{example}
@@ -235,7 +235,7 @@ In OO this applies to class's mutable fields.
 
 \begin{example}[Why \invar{} fields?]
 We can think of a mutable field has having a \texttt{read} and a \texttt{write} method.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class Super {
     T field;
 
@@ -267,29 +267,29 @@ Arrays in java are \covar{} because Java is stupid. So \textit{writes} to arrays
 
 \begin{example}[\covar{} arrays in Java]
 Consider the following:
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[language=Java, numbers=left, escapechar=|]
 String[] strs = {"hello", "world"};
 Object[] objs = strs;
 for (Object obj : objs) {
     System.out.println(obj);
 }
 System.out.println()
-objs[0] = new Object();
+objs[0] = new Object(); |\label{line:covararry}|
 \end{lstlisting}
-This fails at line 7. There is a \runtimecheck{} that throws a \\ \texttt{java.lang.ArrayStoreException} for array writes.
+This fails at line~\ref{line:covararry}. There is a \runtimecheck{} that throws a \\ \texttt{java.lang.ArrayStoreException} for array writes.
 \end{example}
 
 \begin{example}[\contra{} arrays?]
 What if Java had \contra{} arrays? Consider:
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[language=Java, numbers=left, escapechar=|]
 Object[] objs = [new Object(), new Object()];
 String strs = objs;
 strs[0] = "hello";
-for (String str : strs) {
-    System.out.println("bro" + str);
+for (int i = 0; i < strs.length(); i++) {
+    System.out.println("bro" + strs[i]); |\label{line:contrarrread}| 
 }
 \end{lstlisting}
-Here this would require a \runtimecheck{} at line 5 when we read from the array.
+Here this would require a \runtimecheck{} at line~\ref{line:contrarrread} when we read from the array.
 \end{example}
 
 In general we want \covar{} for reads, or types in \textit{positive} positions whereas we want \contra{} for writes or types in \textit{negative} positions.
@@ -299,7 +299,7 @@ If what should be an \invar{} relation is treated a \contra{}, then we need a \r
 \begin{example}[Double pointers in C++]
   How should subtyping relate to pointers, and in particular double pointers?
   Consider the following, which assigns a value of \texttt{X} to what is passed into \texttt{init}.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[language=C++, escapechar=|]
 class SuperX {};
 
 class X : public SuperX {
@@ -318,7 +318,7 @@ class Initializer {
 };
 \end{lstlisting}
   For example we could use an \texttt{Initializer} to assign a non-\cringe{} value to a field of type \texttt{X*}.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[language=C++, escapechar=|]
 class Value {
     private: X* x = nullptr;
 
@@ -340,7 +340,7 @@ class Value {
   \end{mathpar}
   Let's test \textsc{CovarDoublePtr}.
   Consider if we modify \texttt{Value} as
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[language=C++, escapechar=|]
 class Value {
     private: SubX* x = nullptr;
 
@@ -354,7 +354,7 @@ class Value {
   The method will attempt to assign a \texttt{X*} to a \texttt{SubX*}.
   This write fails because $\notsubtype{X}{SubX}$.
   This is equivalent to allowing:
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[language=C++, escapechar=|]
 class Initializer {
     public:
         void init(SubX** x) {
@@ -365,7 +365,7 @@ class Initializer {
 
   Let's instead test \textsc{ContraDoublePtr}.
   Consider if we modify both \texttt{Initializer} and \texttt{Value} as
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[language=C++, escapechar=|]
 class Initializer {
     public:
         void init(X** x) {
@@ -451,7 +451,7 @@ class Value {
   However in a setting with subtyping, knowing $t : T$ only tells us that there's some $S$ that $t$ really is, where $\subtype{S}{T}$.
   Consider a language that has a \texttt{MyType} to represent the \dynamic{} type of a term.
   We may define:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class Point {
     int x,y;
 
@@ -472,7 +472,7 @@ class ColorPoint extends Point {
   However this restriction is very screwy when you consider that some subclass of \texttt{Point} or \texttt{ColorPoint} may inherit \texttt{equals} and call it.
   In this setting we have no idea of the lower bound on \texttt{this}.
   Thus all of the following calls are bad:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 Point p        = ...;
 ColorPoint cp1 = ...;
 ColorPoint cp2 = ...;
@@ -493,7 +493,7 @@ cp2.equals(cp1)
 cp1.equals(cp2) 
 \end{lstlisting}
   What if we make \texttt{ColorPoint} \texttt{final}; that is no class may \texttt{extend} \texttt{ColorPoint}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 final class ColorPoint extends Point {
     int color;
     override boolean equals(MyType other) {
@@ -502,7 +502,7 @@ final class ColorPoint extends Point {
 }
 \end{lstlisting}
   That helps us with the last two calls.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 Point p        = ...;
 ColorPoint cp1 = ...;
 ColorPoint cp2 = ...;
@@ -525,7 +525,7 @@ cp1.equals(cp2)
   Instead what if we could guarantee that a term has \textit{exactly} its declared type.
   Say the syntax is \texttt{@T t} where $t$ dynamically does not have a subtype of $T$.
   We could say the following
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 @Point p        = ...;
 @ColorPoint cp1 = ...;
 ColorPoint cp2  = ...;
@@ -625,7 +625,7 @@ Subtypes may \textit{strengthen} history constraints for fields.
 
 \begin{example}[Unique key generation]
   We may specify a class that generates unique keys as an incrementing counter, that is keys it has not generated before, as follows
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class IncCounter {
     // constraint old(key) <= key
     int key;
@@ -643,7 +643,7 @@ class IncCounter {
   The conjunction of the history constraint and postcondition of \texttt{generate} ensure that it actually generates new keys.
   Of course we are assuming no overflow.
   We could do something similar with a decrementing counter.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class DecCounter {
     // constraint key <= old(key)
     int key;
@@ -661,7 +661,7 @@ class DecCounter {
   Each is acceptable as a unique key generator, but neither is a behavioral subtype of the other.
   We may unify each with a common abstract class.
   A first attempt at generalizing some transitive relation to be used for uniqueness and a reflexive closure of that relation is as follows.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 abstract class GenerateUniqueKey {
     // constraint reflTransRel(old(key),key)
     int key;
@@ -715,7 +715,7 @@ class DecCounter extends GenerateUniqueKey {
 }
 \end{lstlisting}
   A more precise version is as follows.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 abstract class GenerateUniqueKey {
      // constraint forall z, old(used(z)) -> used(z)
 
@@ -800,7 +800,7 @@ class DecCounter {
   \end{itemize}
   A consequence of these rules is that a function may not call another if its termination measure is $0$.
   Consider the following valid and invalid implementations of a factorial.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 interface Factorial {
     // requires 0 <= n
     // decreases n
@@ -839,7 +839,7 @@ class InvalidFactorial1 implements Factorial {
   Thus at face value it seems that the given definition is sufficient.
   However it is possible to write a non-terminating program that satisfies these conditions when we use subtyping.
   Consider the following;
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class ExploitFactorial implements Factorial {
     // requires 0 <= n
     // decreases n + 1
@@ -865,7 +865,7 @@ Subtyping expresses \textit{classification}, whereas inheritance is a means of \
 
 \begin{example}[Immutabe and Mutable Types]
 Consider the following java code for an immutable cell:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class ImmutableCell {
 
     // constraint: old(val) = val
@@ -882,7 +882,7 @@ class ImmutableCell {
 \end{lstlisting}
 We could want to write a mutable cell. How should it be related to \\ \texttt{ImmutableCell}?
 Ideally a \texttt{MutableCell} could inherit all of \texttt{ImmutableCell}'s functionality and add a setter:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class MutableCell extends ImmutableCell {
 
     public MutableCell (int val) {
@@ -895,7 +895,7 @@ class MutableCell extends ImmutableCell {
 }
 \end{lstlisting}
 However \texttt{MutableCell} breaks the history constraint on \texttt{val}, so it cannot be a \behavioral{} subtype! In Java it would be best to use aggregation:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class MutableCell {
     ImmutableCell cell;
 
@@ -917,7 +917,7 @@ Admittedly this is stupid: it could just have an \texttt{int} field and do away 
 
 \begin{example}[Private Inheritance]
 In C++ it's possible for a class to inherit \textit{privately} from another class. This achieves code reuse without introducing a subtyping relation. Now we can implement the immutable and mutable cell example as we wanted to before.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[language=C++, escapechar=|]
 class ImmutableCell {
     private:
         // constraint: old(val) = val
@@ -989,7 +989,7 @@ In C++ and C\# a superclass may declare a method as \texttt{virtual} if a subcla
 
 \begin{example}[Overloading in Java]
   The below Java code will succeed.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class Person {
     protected double salary;
     
@@ -1040,7 +1040,7 @@ public class Main {
 
 \begin{example}[Overloading in Java vs C\#]
   The following Java code will print ``X''.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class A {}
 
 class B extends A {}
@@ -1068,7 +1068,7 @@ public class Main {
   Even though \static{}ally $y$ is a $Y$ Java will find the most specific method given the \static{} types of the arguments.
   In this case \texttt{X.foo(B)} is more specific than \texttt{Y.foo(A)}.
   Conversely the analogous example in C\# will print ``Y''.
-\begin{lstlisting}[language={[Sharp]C}]
+\begin{lstlisting}[language={[Sharp]C}, escapechar=|]
 using System;
 
 class A {}
@@ -1106,7 +1106,7 @@ A Binary method takes the \receiver{} and one parameter (usually of the same typ
 
 \begin{example}[Equals]
 Consider that when we want to invoke an \texttt{equals} method we would like to have the most specialized version invoked.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class Animal {
     public boolean equals (Animal a) { ... }
 }
@@ -1117,7 +1117,7 @@ class Cat extends Animal {
 \end{lstlisting}
 \texttt{Cat}'s \texttt{equals} does \textit{not} \override{} \texttt{Animal}'s. \texttt{Cat}'s \texttt{equals} \textit{overloads} \texttt{Animal}'s.
 Consider:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 Cat c1 = new Cat();
 Cat c2 = new Cat();
 Animal a1 = c1;
@@ -1126,7 +1126,7 @@ a1.equals(a2);
 \end{lstlisting}
 Here \texttt{Animal}'s \texttt{equals} method is called even though \texttt{Cat}'s would be safe and what we want.
 If we allowed an override than the following unsafe code would be accepted:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 Cat c = new Cat();
 Animal a = new Animal();
 c.equals(a);
@@ -1138,7 +1138,7 @@ In languages such as Java, C++, and C\# how does one specialize behavior based o
 
 \begin{example}[Type tests]
 We can check the type of the parameter:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class Cat extends Animal {
     public boolean equals (Animal a) {
         if (a instanceof Cat) {
@@ -1155,7 +1155,7 @@ class Cat extends Animal {
 \begin{example}[Double invocation]
 Both the super and subclass may have appropriate methods to dispatch to depending on the parameter types.
 Consider the following:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class Animal {
     public boolean equals (Animal a) {
         // Give up
@@ -1213,7 +1213,7 @@ In Java $m_{general}$ is inherited by the $S_i$. $m \in T$ and each $m_i \in T$ 
 
 \begin{example}[Dynamic resolution in C\#]
 C\# allows one to \dynamic{}ally resolve the calling method:
-\begin{lstlisting}[language = {[Sharp]C}]
+\begin{lstlisting}[language = {[Sharp]C}, escapechar=|]
 class Animal {
     boolean equals (Animal a) {
         // General code for Animals
@@ -1235,7 +1235,7 @@ static boolean equals (Animal a1, Animal a2) {
 
 \begin{example}[Multiple Dispatch]
 Some (experimental) languages support \textit{multiple dispatch}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[language=Java, escapechar=|]
 class Animal {
     boolean equals (Animal a) {
         // General code for Animals
@@ -1268,7 +1268,7 @@ Java and C\# only support single inheritance but using aggregation may simulate 
 \begin{example}[Interfaces and subtyping]
   Sometimes Java is unable to tell \static{}ally if the \dynamic{} type of a term is a subtype of some interface.
   Consider the following program.
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[language=Java, numbers=left, escapechar=|]
 interface I {
     int foo ();
 }
@@ -1284,22 +1284,22 @@ public class Main {
         C c1 = new C();
         C c2 = getC();
 
-        I i1 = (I) c1;
+        I i1 = (I) c1; |\label{line:Ii1Ic1}|
         System.out.println(i1.foo());
-        I i2 = (I) c2;
+        I i2 = (I) c2; |\label{line:Ii2Ic2}|
         System.out.println(i2.foo());
     }
 }
 \end{lstlisting}
   The typechecker accepts the above code, even though $\notsubtype{C}{I}$.
-  At \runtime{} an exception is thrown at line 16 when attempting to cast $c_1$ to an $I$.
-  If lines 16-17 are commented out then at \runtime{} an exception is thrown at line 18 when attempting to cast $c_2$ to an $I$.
+  At \runtime{} an exception is thrown at line~\ref{line:Ii1Ic1} when attempting to cast $c_1$ to an $I$.
+  If lines \ref{line:Ii1Ic1} until \ref{line:Ii2Ic2} are commented out then at \runtime{} an exception is thrown at line \ref{line:Ii2Ic2} when attempting to cast $c_2$ to an $I$.
   Why does Java accept this code if obviously $\notsubtype{C}{I}$?
   Because the \dynamic{} types of $c_1$ and $c_2$ could be some subtype of $I$.
   Java opts for flexibility and performs a \textit{\runtimecheck{}} in these cases.
   This is because Java \textit{does allow} for \textit{multiple subtyping}.
   For example we could instead have:
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[language=Java, numbers=left, escapechar=|]
 interface I {
     int foo ();
 }
@@ -1319,15 +1319,15 @@ public class Main {
         C c1 = new D();
         C c2 = getC();
 
-        I i1 = (I) c1;
+        I i1 = (I) c1; |\label{line:Ii1Ic12}|
         System.out.println(i1.foo());
-        I i2 = (I) c2;
+        I i2 = (I) c2; |\label{line:Ii2Ic122}|
         System.out.println(i2.foo());
     }
 }
 \end{lstlisting}
   The above code compiles and prints $0$ twice.
-  If $I$ had been declared as a class or an abstract class the casts on lines 16 and 18 would have been rejected by the typechecker.
+  If $I$ had been declared as a class or an abstract class the casts on lines \ref{line:Ii1Ic12} and \ref{line:Ii2Ic122} would have been rejected by the typechecker.
   This is because Java \textit{does not} allow \textit{multiple subclassing}.
 \end{example}
 
@@ -1349,7 +1349,7 @@ If there is a constructor for $Top$ without arguments, this will be called first
 
 \begin{example}[Multiple inheritance in C++]
   Consider the following C++ code that implements an email folder.
-\begin{lstlisting}[language=C++, numbers=left]
+\begin{lstlisting}[language=C++, numbers=left, escapechar=|]
 #include <iostream>
 #include <vector>
 
@@ -1373,12 +1373,12 @@ class Folder {
     
         bool empty() {
             // returns true iff the folder is empty
-            return this->data.empty();
+            return this->data.empty(); |\label{line:folderempty}|
         } 
 
         void enqueue(Mail *m) {
             // adds an e-mail to the folder
-            this->data.push_back(*m);
+            this->data.push_back(*m);        |\label{line:folderenqueue}|
         }
 
         Mail* dequeue() {
@@ -1410,15 +1410,15 @@ class Inbox:
         Inbox () {}
     
         bool empty() {
-            return this->Folder::empty();
+            return this->Folder::empty();   |\label{line:inboxempty}|
         }
         
         void enqueue(Mail *m) {
-            this->Folder::enqueue(m);
+            this->Folder::enqueue(m);       |\label{line:inboxenqueue}|
         }
         
         Mail *dequeue() {
-            return this->Folder::dequeue();
+            return this->Folder::dequeue(); |\label{line:inboxdequeue}|
         }
 };
 
@@ -1449,7 +1449,7 @@ int main() {
 
 
   Our code and hierarchy seem fine, but consider the following additions:
-\begin{lstlisting}[language=C++, numbers=left]
+\begin{lstlisting}[language=C++, numbers=left, escapechar=|]
 // folder containing all read e-mails
 class Archive: public virtual Folder {
     public: Archive () {}
@@ -1457,20 +1457,22 @@ class Archive: public virtual Folder {
 
 class Client: public Inbox, public Archive {
         public:
-            void receive(Mail *m) { this->Inbox::enqueue(m); }
+            void receive(Mail *m) {
+                this->Inbox::enqueue(m); |\label{line:clientreceive}|
+            }
             
             void markAllAsRead() {
-                while (!this->Inbox::empty()) {
-                    Mail *m = this->Inbox::dequeue();
-                    this->Archive::enqueue(m);
+                while (!this->Inbox::empty()) {       |\label{line:whilenotempty}|
+                    Mail *m = this->Inbox::dequeue(); |\label{line:clientdequeue}|
+                    this->Archive::enqueue(m);        |\label{line:clientenqueue}|
                 }
             }
 };
 
 void clientTest() {
-    Client* client = new Client();
-    client->receive(new Mail());
-    client->markAllAsRead();
+    Client* client = new Client(); |\label{line:newclient}|
+    client->receive(new Mail());   |\label{line:receivenewmail}|
+    client->markAllAsRead();       |\label{line:invokemarkread}|
 }
 
 int main() {
@@ -1488,33 +1490,7 @@ int main() {
   \item Via \texttt{Inbox}, \texttt{Client} inherits \textit{non-virtually} from \texttt{HighPriority}.
   \item Via \texttt{Inbox}, \texttt{LowPriority}, \texttt{HighPriority}, and \texttt{Archive}, \texttt{Client} inherits \textit{virtually} from \texttt{Folder}. 
   \end{itemize}
-
-  % \begin{figure}
-  %   \centering
-  %   \begin{forest}
-  %     qtree edges
-  %     [Folder, name=Folder
-  %     [LowPriority, name=LowPriority ]
-  %     [HighPriority, name=HighPriority
-  %     [Inbox, name=Inbox
-  %     [, no edge ]
-  %     [Client, name=Client ]]
-  %     [, no edge ]]
-  %     [Archive, name=Archive ]]
-  %     \draw (Folder.south) -- (Inbox.north);
-  %     % \draw (LowPriority.south) -- (Inbox.north);
-  %     % \draw (Archive.south) -- (Client.north);
-      
-  %     % [Y
-  %     % [Z ]
-  %     % [X,name=X [A  [B ] [C, name=C ]]
-  %     % [A, name=A2  [, no edge ] [B ]]]]
-  %     % \draw (A2.south) -- (C.north);
-  %   \end{forest}
-  %   \caption{Email folder class hierarchy.}
-  %   \label{fig:emailfromhell}
-  % \end{figure}
-  Again for an instance of \texttt{Client} there is only one \texttt{Folder} so ``data created'' is printed only once.
+Again for an instance of \texttt{Client} there is only one \texttt{Folder} so ``data created'' is printed only once.
   The code behaves the same way if we again remove \texttt{public virtual Folder} from \texttt{Inbox}.
   This was probably just meant to confuse people.
 
@@ -1522,28 +1498,28 @@ int main() {
   In fact if \texttt{client->receive(new Mail())} is never called beforehand then \texttt{data} will be empty and the loop will never run.
   Let us follow the execution in \texttt{clientTest}.
   \begin{enumerate}
-  \item On line 19 in \texttt{clientTest} \texttt{Client}'s constructor is invoked.
+  \item On line~\ref{line:newclient} in \texttt{clientTest} \texttt{Client}'s constructor is invoked.
   \item The default constructor for \texttt{Folder} is called only once, initializing an empty \texttt{data}.
   \item The default constructor for \texttt{LowPriority} is called only once.
   \item The default constructor for \texttt{HighPriority} is called only once.
   \item The default constructor for \texttt{Inbox} is called only once.
   \item The default constructor for \texttt{Archive} is called only once.
   \item The call stack returns to \texttt{clientTest}.
-  \item On line 20 in \texttt{clientTest} \texttt{Client.recieve} is invoked.
-  \item On line 8 in \texttt{Client.recieve} \texttt{this->Inbox::enqueue(m)} is invoked.
-  \item On line 65 in \texttt{Inbox.enqueue} \texttt{this->Folder::enqueue(m)} is invoked.
-  \item On line 29 in \texttt{Folder.enqueue} \texttt{this->data.push\_back(*m)} is invoked.
+  \item On line~\ref{line:receivenewmail} in \texttt{clientTest} \texttt{Client.recieve} is invoked.
+  \item On line~\ref{line:clientreceive} in \texttt{Client.recieve} \texttt{this->Inbox::enqueue(m)} is invoked.
+  \item On line~\ref{line:inboxenqueue} in \texttt{Inbox.enqueue} \texttt{this->Folder::enqueue(m)} is invoked.
+  \item On line~\ref{line:folderenqueue} in \texttt{Folder.enqueue} \texttt{this->data.push\_back(*m)} is invoked.
   \item The call stack returns to \texttt{clientTest}.
-  \item On line 21 in \texttt{clientTest} \texttt{client->markAllAsRead()} is invoked.
-  \item On line 11 in \texttt{Client.markAllAsRead} \texttt{this->Inbox::empty()} is invoked.
-  \item On line 61 in \texttt{Inbox.empty} \texttt{this->Folder::empty()} is invoked.
-  \item On line 24 in \texttt{Folder.empty} \texttt{this->data.empty()} is invoked and returns \texttt{false}.
+  \item On line~\ref{line:invokemarkread} in \texttt{clientTest} \texttt{client->markAllAsRead()} is invoked.
+  \item On line~\ref{line:whilenotempty} in \texttt{Client.markAllAsRead} \texttt{this->Inbox::empty()} is invoked.
+  \item On line~\ref{line:inboxempty} in \texttt{Inbox.empty} \texttt{this->Folder::empty()} is invoked.
+  \item On line~\ref{line:folderempty} in \texttt{Folder.empty} \texttt{this->data.empty()} is invoked and returns \texttt{false}.
   \item The call stack returns to \texttt{Client.markAllAsRead}, and the guard of the loop is \texttt{true}.
-  \item On line 12 in \texttt{Client.markAllAsRead} \texttt{this->Inbox::dequeue()} is invoked.
-  \item On line 69 in \texttt{Inbox.dequeue} \texttt{this->Folder::dequeue()} is invoked.
+  \item On line~\ref{line:clientdequeue} in \texttt{Client.markAllAsRead} \texttt{this->Inbox::dequeue()} is invoked.
+  \item On line~\ref{line:inboxdequeue} in \texttt{Inbox.dequeue} \texttt{this->Folder::dequeue()} is invoked.
   \item In \texttt{Folder.dequeue} the \texttt{Mail} that was initially put in \texttt{data} is popped out and returned.
   \item The call stack returns to \texttt{Client.markAllAsRead}, and \texttt{mail} is assigned to the returned \texttt{Mail}.
-  \item On line 13 in \texttt{Client.markAllAsRead} \texttt{this->Archive::enqueue(m)} is invoked.
+  \item On line~\ref{line:clientenqueue} in \texttt{Client.markAllAsRead} \texttt{this->Archive::enqueue(m)} is invoked.
   \item \texttt{Archive.enqueue} \textit{is} \texttt{Folder.enqueue}.
   \item In \texttt{Folder.enqueue} the \texttt{Mail} is added to \textit{the same data}.
   \item The call stack returns to \texttt{Client.markAllAsRead}.
@@ -1553,7 +1529,7 @@ int main() {
   But because \texttt{Client}'s \texttt{Inbox} and \texttt{Archive} share the same \texttt{Folder} with the same \texttt{data}, the same mail keeps being pushed on and popped off the same stack and no progress is made reading through the emails.
   This example was designed to overwhelm the reader with extraneous classes and inheritance annotations.
   The following minimal example has the same behavior.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[language=C++, escapechar=|]
 #include <iostream>
 #include <vector>
 
@@ -1692,7 +1668,7 @@ A subclass only has one copy of a superclass in memory. In initialization each c
 \begin{example}[Traits and (the lack of) \behavioral{} subtyping]
   One (futile) approach to ensure that traits follow \behavioral{} subtyping is to require that if a class $C$ has a specification $S$, and a trait $T$ extends $C$, then \texttt{C with T} must also abide by $S$.
   Consider the following counterexample.
-\begin{lstlisting}[language=Scala]
+\begin{lstlisting}[language=Scala, escapechar=|]
 class C {
     // ensures x <= result <= x + 2
     def foo (x : Int) : Int = x + 1
@@ -1874,7 +1850,7 @@ To start out we want the stack to be empty, and the registers to contain the kno
 \begin{example}[Bytecode verification example]
   Suppose we have a class hierarchy $\subtype{D}{C}$ and $\subtype{E}{C}$.
   Consider the program:
-\begin{lstlisting}[language=JVMIS, numbers=left, firstnumber=0]
+\begin{lstlisting}[language=JVMIS, numbers=left, firstnumber=0, escapechar=|]
 aload 0;
 astore 2;
 aload 1;
@@ -1995,7 +1971,7 @@ Suppose:
 {\subtype{\generic{G}{S}}{\generic{G}{T}}}
 \end{mathpar}
 In Java we could define a class for lists:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java, escapechar=|]
 class List<A> {
     void add (A a) { ... }
     A head () { ... }
@@ -2021,7 +1997,7 @@ Suppose:
 \end{mathpar}
 Consider the previous \texttt{List} class.
 Now we could write client code:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 List<Object> lo = new List<Object>();
 List<String> ls = lo;
 lo.add(new Object);
@@ -2037,7 +2013,7 @@ Scala allows \contra{} type parameters when they only occur in a negative positi
 
 \begin{example}[Scala \covar{} parameter]
 Consider an immutable cell in Scala:
-\begin{lstlisting}[language=Scala]
+\begin{lstlisting}[escapechar=|, language=Scala]
 class ImmutableCell[+A] (val : A) {
     def get() : A { val }
 }
@@ -2049,7 +2025,7 @@ Question: what about constructor?
 
 \begin{example}[Scala \contra{} parameter]
 Consider a comparison interface:
-\begin{lstlisting}[language=Scala]
+\begin{lstlisting}[escapechar=|, language=Scala]
 interface Comparison[-A] {
     int compare(A);
 }
@@ -2059,7 +2035,7 @@ Here \texttt{A} is only used as a method parameter to be written to, i.e. a nega
 
 \begin{example}[Logger: constraints on type bounds.]
   Java rejects the following definition of \texttt{Logger}.
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[escapechar=|, language=Java, numbers=left]
 class Logger<T> {
     public void log(T t) {
         System.out.println(t.loggerString());
@@ -2069,16 +2045,16 @@ class Logger<T> {
 public class Program {
     public static void main(String args[]) {
         Logger<Integer> logger = new Logger<Integer>();
-        logger.log(42);
+        logger.log(42); |\label{line:log42}|
     }
 }
 \end{lstlisting}
   This is because Java does not know whether $T$ has a \texttt{loggerString()} method.
-  If the typechecker accepted the above then a runtime error would be thrown when we try to execute line 10.
+  If the typechecker accepted the above then a runtime error would be thrown when we try to execute line~\ref{line:log42}.
   We need to \textit{constrain} $T$ in \texttt{Logger}'s definition so that we know it has a \texttt{loggerString()} method.
   This is called \textit{bounded polymorphism}.
   We can adjust the above example with the following.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 interface Loggable {
     String loggerString();
 }
@@ -2112,7 +2088,7 @@ public class Program {
   Since $T$ only occurs in \textit{negative} positions in \texttt{Logger},
   allowing \contra{} subtyping for instances of \texttt{Logger} would be safe, even though Java does not allow it.
   The below would be ok at \runtime{} if $\subtype{B}{A}$.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 void foo(Logger<A> logA) {
     Logger<B> logB = logA;
     logB.log(new B());
@@ -2125,28 +2101,28 @@ void foo(Logger<A> logA) {
   Sometimes when declaring a generic class it needs itself as one of the bounds for a type variable.
   This is particularly common for binary methods.
   Consider the following attempt at an abstract class \texttt{Comparable}.
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[escapechar=|, language=Java, numbers=left]
 public abstract class Comparable<T> {
     public abstract int compareTo(T other);
     public boolean greaterThan(T other) {
-        return other.compareTo(this) < 0;
+        return other.compareTo(this) < 0; |\label{line:othernotcomparable}|
     }
 }
 \end{lstlisting}
-  Java's typechecker rejects the above because on line 4 $T$ may not have a \texttt{compareTo} method.
+  Java's typechecker rejects the above because on line~\ref{line:othernotcomparable} $T$ may not have a \texttt{compareTo} method.
   Thus we need to constraint $T$ by \texttt{Comparable}, the class being defined.
   A first attempt is to do the following:
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[escapechar=|, language=Java, numbers=left]
 abstract class Comparable<T extends Comparable<T>> {
     public abstract int compareTo(T other);
     public boolean greaterThan(T other) {
-        return other.compareTo(this) < 0;
+        return other.compareTo(this) < 0; |\label{line:thisnotT}|
     }
 }
 \end{lstlisting}
-  Java's typechecker still rejects this because on line 4 we pass \texttt{this} of type \texttt{Comparable<T>} into \texttt{compareTo} which expects a $T$.
+  Java's typechecker still rejects this because on line~\ref{line:thisnotT} we pass \texttt{this} of type \texttt{Comparable<T>} into \texttt{compareTo} which expects a $T$.
   Thus also need to modify \texttt{compareTo}'s signature.
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[escapechar=|, language=Java, numbers=left]
 abstract class Comparable<T extends Comparable<T>> {
     public abstract int compareTo(Comparable<T> other);
     public boolean greaterThan(T other) {
@@ -2155,7 +2131,7 @@ abstract class Comparable<T extends Comparable<T>> {
 }
 \end{lstlisting}
   We can avoid changing the signatures by doing:
-\begin{lstlisting}[language=Java,numbers=left]
+\begin{lstlisting}[escapechar=|, language=Java,numbers=left]
 abstract class Comparable<T> {
     public abstract int compareTo(T other);
     public boolean greaterThan(T other) {
@@ -2176,7 +2152,7 @@ Suppose there's some \texttt{Comparator} interface and generic \texttt{TreeSet} 
 In order to search for elements it needs to compare elements in binary nodes of the tree.
 Thus it needs some way to have a \texttt{compare} function for its elements.
 Because we are in Java we cannot pass functions as arguments.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 interface Comparator<T> {
     int compare(T x, T y);
 }
@@ -2190,7 +2166,7 @@ class TreeSet<E extends Comparator<E>> {
 }
 \end{lstlisting}
 Suppose that we would like to create a \texttt{TreeSet<Student>} where \texttt{Student}s are a \texttt{Person}, and \texttt{Person} has a general comparison operation for people.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Person implements Comparator<Person> {
     ...
     int compare (Person x, Person y) { ... }
@@ -2201,14 +2177,14 @@ class Student extends Person {
 }
 \end{lstlisting}
 Where we would like to have client code:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 TreeSet<Student> ts = new TreeSet<Student>();
 \end{lstlisting}
 Well too bad.
 Java gets angry because \texttt{Student} is ``not within the bounds of the type variable (of \texttt{TreeSet})."
 That is, we don't know $\subtype{Student}{\generic{Comparator}{Student}}$.
 If we try to have \texttt{Student} directly implement the \texttt{Comparator} interface Java still isn't satisfied:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Student extends Person implements Comparator<Student> {
     int compare(Student x, Student y) { ... }
 }
@@ -2216,7 +2192,7 @@ class Student extends Person implements Comparator<Student> {
 Java complains that ``\texttt{Comparator} cannot be inherited with different arguments: \texttt{Student} and \texttt{Person}."
 If \texttt{Person} does not implement \texttt{Comparator} then Java is satisfied, but we would like it to.
 If we would like to have our cake and eat it too we need to modify our \texttt{TreeSet} class as follows:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class TreeSet<E extends F, F extends Comparator<F>> {
     ...
     TreeSet () {}
@@ -2226,7 +2202,7 @@ class TreeSet<E extends F, F extends Comparator<F>> {
 }
 \end{lstlisting}
 And then out client code would need to look like:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 TreeSet<Person, Student> ts = new TreeSet<Person, Student>();
 \end{lstlisting}
 Here we needed to make explicit in \texttt{TreeSet}'s type parameters that the element type does not necessarily need to have its own \texttt{Comparator}, but that it has a supertype that implements \texttt{Comparator}.
@@ -2249,24 +2225,24 @@ The type argument to the instance of an existential type is abstract to clients.
 
 \begin{example}[Wildcard identity]
 Java accepts the following identity function:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 static List<?> id(List<?> l) {
     return l;
 }
 \end{lstlisting}
 In the body of \texttt{id} the Java compiler is able to show $\exists E, \generic{List}{E}$, where \texttt{l} is a \textit{proof} of $\exists E, \generic{List}{E}$.
 However it does not know that the parameter type and return type are the same.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 List<String> l = id(new ArrayList < String > );
 \end{lstlisting}
 The above fails because java only knows that the result of \texttt{id(new ArrayList<List>)} is $\exists E, \generic{List}{E}$.
 Java does not remember that the $E$ in question is a \texttt{String}.
 The best we can do is:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 List<?> l = id(new ArrayList < String > );
 \end{lstlisting}
 Java does not even allow:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 List<Object> l = id(new ArrayList < String > );
 \end{lstlisting}
 Since Java generics are \textit{\invar{}} in general $\exists E, \generic{G}{E} \nless: \generic{G}{Object}$.
@@ -2274,7 +2250,7 @@ Since Java generics are \textit{\invar{}} in general $\exists E, \generic{G}{E} 
 
 \begin{example}[Reading from and writing to wildcards]
 Java rejects the following:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 static void merge (Collection<?> x, Collection<?> y) {
     x.addAll(y);
 }
@@ -2293,7 +2269,7 @@ Java will not be able to satisfy the type bounds of
 $$ \generic{\texttt{addAdll}}{A} : \generic{Collection}{A} \times (generic{Collection}{B} \wedge \subtype{B}{A}) \rightarrow ()$$
 Since there's no relationship between $A$ and $B$.
 Even if we try:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 static void merge (Collection<?> x, Collection<?> y) {
 for (Object elem : y) {
         x.add(elem);
@@ -2323,7 +2299,7 @@ Java offers the following:
 
 \begin{example}[Reading from and writing to wildcards revisited]
 We may now constrain the existential type parameters in our \texttt{merge} example:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 static <E> void merge (Collection<? super E> x, Collection<? extends E> y) {
     x.addAll(y);
     for (A elem : y) {
@@ -2355,7 +2331,7 @@ This is called \textit{use-site variance}.
 
 \begin{example}[Use-site variance]
 Suppose we have some cell class:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Cell<E> {
     private E elem;
     Cell (E elem) { this.elem = elem; }
@@ -2365,7 +2341,7 @@ class Cell<E> {
 \end{lstlisting}
 Say we have that $\texttt{Student extends Person}$.
 We can create a \covar{} \texttt{Cell} that only allows us to perform reads:
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[escapechar=|, language=Java, numbers=left]
 Cell<? extends Person> readOnly = new Cell<Student>(new Student());
 Object o  = readOnly.get();  // good
 Person p  = readOnly.get();  // good
@@ -2395,7 +2371,7 @@ Let's take this line by line.
 Intuitively writing to \texttt{readOnly} fails because we have information about the lower bound of $E$.
 
 We may also create a \contra{} cell that only allows us to perform writes. Suppose that there is also some class \texttt{MasterStudent extends Student}.
-\begin{lstlisting}[language=Java, numbers=left]
+\begin{lstlisting}[escapechar=|, language=Java, numbers=left]
 Cell<? super Student> writeonly = new Cell<Person>(new Person());
 writeonly.set(new MasterStudent()); // good
 writeonly.set(new Student());       // good
@@ -2432,7 +2408,7 @@ In principle it is possible to downcast to a more specific type.
 
 \begin{example}[TreeSet revisited]
 We may now only have a single type parameter for \texttt{TreeSet} via wildcards.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class TreeSet<E extends Comparator<?>> {
     ...
     TreeSet () {}
@@ -2442,7 +2418,7 @@ class TreeSet<E extends Comparator<?>> {
 }
 \end{lstlisting}
 We may now define client code:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 TreeSet<Student> ts = new TreeSet<Student>();
 \end{lstlisting}
 \end{example}
@@ -2509,7 +2485,7 @@ We may write the subtyping rules for generics as in \ref{fig:genericsubtype}.
 \begin{example}[Java example rules]
   Here is a concrete Java program that attempts to use certain inference rules.
   It is interesting to see what Java allows and disallows.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 import java.util.*;
 
 class Animal {
@@ -2621,7 +2597,7 @@ public class MyClass {
 
 \begin{example}[Function composition]
   One can define a ``general'' signature for the composition of two functions as:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 import java.util.function.Function;
 
 public class MyClass {
@@ -2643,7 +2619,7 @@ public class MyClass {
 
 \begin{example}[Concatenating Lists]
   Given a List interface in Java:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 interface List<T> {
     public int length();
     public T read(int z);
@@ -2657,7 +2633,7 @@ interface List<T> {
 \end{lstlisting}
   We can write a \texttt{Concat} class that concatenates two lists with a separator in between.
   Here we have four different implementations of a ``concat'' operation each with varying permissiveness in the types of their arguments.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Concat<A> {
     public void concat(A sep, List<A> from, List<A> to) {
         to.write(sep);
@@ -2702,7 +2678,7 @@ class Concat<A> {
   Thus \texttt{concatA1}, \texttt{concatA2}, and \texttt{concatA3} are all more permissive than \texttt{concat}.
   \texttt{concatA3} is definitely more permissive than \texttt{concatA2}.
   Consider:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 // Z <: Y
 static void A2vsA3(Concat<Y> yc, Z z, List<Z> zs) {
     // ok
@@ -2714,7 +2690,7 @@ static void A2vsA3(Concat<Y> yc, Z z, List<Z> zs) {
 \end{lstlisting}
   \texttt{concatA1} and \texttt{concatA3} are incomparable.
   Consider:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 // Z <: Y <: X
 static void A1vsA3(Concat<Y> yc, Y y, Z z, List<X> xs, List<Z> zs) {
     // ok
@@ -2733,7 +2709,7 @@ static void A1vsA3(Concat<Y> yc, Y y, Z z, List<X> xs, List<Z> zs) {
 
   For the sake of argument we could consider what if Java had Scala-like variance annotations.
   We could accomplish something equally as permissive as \texttt{concatA1} if we add some more interfaces.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 interface ReadList<+T> {
     public int length();
     public T read(int z);
@@ -2774,7 +2750,7 @@ C\# allows the above.
 
 \begin{example}[Erasure and overloading]
 Java disallows the following because there is a name clash between each \texttt{foo} as a result of type erasure.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Erasure<S, T> {
     void foo (S p) {}
     void foo (T p) {}
@@ -2782,7 +2758,7 @@ class Erasure<S, T> {
 \end{lstlisting}
 However C\# does allow this in general.
 If one chooses to instantiate \texttt{Erasure} with the same types any call to foo will be ambiguous and cause a typechecking error.
-\begin{lstlisting}[language={[Sharp]C}]
+\begin{lstlisting}[escapechar=|, language={[Sharp]C}]
 Erasure<Object, Object> erasure = new Erasure<Object, Object>();
 erasure.foo(new Object()); // ambiguous!
 \end{lstlisting}
@@ -2798,7 +2774,7 @@ In Java static fields are shared by all instantiations of a generic class, but n
   Even if it did it would have to deal with erasure at the bytecode level,
   and the bytecode verifier could not check if lower bounds are respected.
   Scala accepts the following nonsense:
-\begin{lstlisting}[language=Scala]
+\begin{lstlisting}[escapechar=|, language=Scala]
 // X must be a supertype of String.
 class Foo[X >: String](val str : X)
 // Scala doesn't care LOL
@@ -2816,11 +2792,11 @@ Every time a template is instantiated the C++ generates an instantiated version 
 \begin{example}[Simulating mixins in C++]
   In C++ it is possible to emulate the functionality of Scala's mixins via templates.
   This is done by having a template class inherit from its own template parameter.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 template <typename T> class Mixin : public T { ... }
 \end{lstlisting}
   This technique may be used to write ``mixins'' for a \texttt{Cell} class.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 class Cell {
     private: int z;
     
@@ -2868,7 +2844,7 @@ template<typename C> class Counting : public C {
   C++ does not place any restrictions on the type parameters.
   C++ allows us to declare the above template classes with calls such as \texttt{this->C::read()} even though it has no idea whether $C$ will have such a method.
   By instantiating \texttt{Doubling} or \texttt{Counting} with \texttt{Cell} we can obtain mixin-behavior.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 int main() {
     Cell* cell = new Cell(2);
     cell->write(5);
@@ -2912,7 +2888,7 @@ int main() {
   In order to get similar behavior in Scala we needed to copy paste a trait and change the name.
   However the lack of type safety may come back to haunt us.
   If we declare some empty class and try to instantiate \texttt{Doubling} the typechecker will reject it.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 class Empty {
     public:
         Empty(int z) {}
@@ -2924,7 +2900,7 @@ int main() {
 }
 \end{lstlisting}
   However if we adjust \texttt{Empty} to just have a \texttt{write} method, C++ will be ok.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 class Empty {
     public:
         Empty(int z) {}
@@ -3025,7 +3001,7 @@ If $\subtype{S}{T}$, $S.m$ \override{}s $T.m$ only if $T.m$ is accessible in $S.
 
 \begin{example}[Default access methods]
 Consider the class \texttt{Super} defined in package \texttt{A}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 package A;
 class Super {
     void foo() {
@@ -3034,7 +3010,7 @@ class Super {
 }
 \end{lstlisting}
 And the class \texttt{Sub} in package \texttt{B}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 package B;
 class Sub extends A.Super {
     public void foo() {
@@ -3043,7 +3019,7 @@ class Sub extends A.Super {
 }
 \end{lstlisting}
 Suppose we have the following client code that invokes \texttt{foo} in package \texttt{A}.
-\begin{lstlisting}[language = Java]
+\begin{lstlisting}[escapechar=|, language = Java]
 Super soup = new Sub();
 soup.foo();
 \end{lstlisting}
@@ -3083,7 +3059,7 @@ This is a refinement of \ref{twostep} that more precisely considers access modif
 
 \begin{example}[Don't always use protection]
 Let's consider the previous example, but now the modifiers are \texttt{protected}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 package A;
 class Super {
     protected void foo() {
@@ -3092,7 +3068,7 @@ class Super {
 }
 \end{lstlisting}
 And the class \texttt{Sub} in package \texttt{B}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 package B;
 class Sub extends A.Super {
     protected void foo() {
@@ -3101,7 +3077,7 @@ class Sub extends A.Super {
 }
 \end{lstlisting}
 Suppose we have the following client code that invokes \texttt{foo} in package \texttt{A}.
-\begin{lstlisting}[language = Java]
+\begin{lstlisting}[escapechar=|, language = Java]
 package A;
 class Client {
     void client() {
@@ -3238,7 +3214,7 @@ Because there are (in theory) no aliases one does not need to worry out the dang
 
 \begin{example}[Direct leaking and capturing]
   Consider the following code for an \texttt{Address} and \texttt{Person} class.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 class Address {
     public:
         std::string city;
@@ -3267,7 +3243,7 @@ class Person {
   It rejects \texttt{setAddr} because \texttt{unique\_ptr} deletes the assignment operator, preventing the class from having an alias to some pointer the client passed in, thus preventing capturing.
   To get C++ to accept \texttt{Person} we need to use the \texttt{move} operator.
 
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 class Person {
     std::unique_ptr<Address> addr;
 
@@ -3285,11 +3261,11 @@ class Person {
   When a unique pointer is passed into a function it needs to be moved.
   This means that the client will no longer be able to use it after the call.
   Imagine that there is some compare function on unique pointers of addresses.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 int compare(std::unique_ptr<Address> x, std::unique_ptr<Address> y) { ... }
 \end{lstlisting}
   Say some client code would like to compare two addresses and do something with them afterwards.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 auto x = std::make_unique<Address>("Hagen");
 auto y = std::make_unique<Address>("Zurich");
 int  c = compare(std::move(x), std::move(y));
@@ -3297,12 +3273,12 @@ auto small_address = c < 0 ? std::move(x) : std::move(y); // C++ mad
 \end{lstlisting}
   We would've liked to use \texttt{compare} to figure out the smaller address, but since both \texttt{x} and \texttt{y} were moved into \texttt{compare} the client can no longer access them.
   We could imagine some alternative \texttt{compare} that returns \texttt{x} and \texttt{y} in addition to the \texttt{int}.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 std::tuple<int, std::unique_ptr<Address>, std::unique_ptr<Address>>
 compare(std::unique_ptr<Address> x, std::unique_ptr<Address> y) { ... }
 \end{lstlisting}
   And then use this in the client:
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 auto x = std::make_unique<Address>("Los Angeles");
 auto y = std::make_unique<Address>("Reno");
 auto t = compare(std::move(x), std::move(y));
@@ -3316,11 +3292,11 @@ auto small_address = c < 0 ? std::move(x) : std::move(y);
   We've merely kicked the problem down the road.
   One could imagine programming in this style but C++ offers another solution.
   Compare could take a pointer to the unique pointer.
-  \begin{lstlisting}[language=C++]
+  \begin{lstlisting}[escapechar=|, language=C++]
 int compare(std::unique_ptr<Address> *x, std::unique_ptr<Address> *y) { ... }
 \end{lstlisting}
   Now the client will pass \texttt{x} and \texttt{y} as references into \textt{compare}.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 auto x = std::make_unique<Address>("Tokyo");
 auto y = std::make_unique<Address>("Cairo");
 int  c = compare(&x, &y);
@@ -3334,14 +3310,14 @@ Obviously this causes problems.
 \begin{example}[Dangling unique pointer]
   One can create a dangling pointer using \texttt{get}.
   Imagine there is some method that returns \texttt{get} on a newly created unique address.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 Address* make_addr() {
     auto addr = std::make_unique<Address>("Zurich");
     return addr.get();
 }
 \end{lstlisting}
   And we have a client that tries to call \texttt{getCity} on the result.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 std::cout << make_addr()->getCity() << std::endl;
 \end{lstlisting}
   Since C++ deletes the data \texttt{addr} points to in \texttt{make\_addr}, calling \texttt{getCity} on the result is undefined behavior.
@@ -3349,7 +3325,7 @@ std::cout << make_addr()->getCity() << std::endl;
 
 \begin{example}[Aliasing unique pointers]
   Other than \texttt{get}, one can alias a unique pointer by constructing one with previously existing data.
-\begin{lstlisting}[language=C++]
+\begin{lstlisting}[escapechar=|, language=C++]
 Address peter_address = new Address("Zurich");
 std::unique_ptr<Address> alias(peter_address);
 alias->city = "Hagen";
@@ -3391,7 +3367,7 @@ However capturing is safe because the capturing data structure owns the captured
 
 \begin{example}[Moving and Borrowing Rust]
   Here's an example of what ownership does and doesn't allow you to do in Rust.
-\begin{lstlisting}[language=Rust]
+\begin{lstlisting}[escapechar=|, language=Rust]
 struct Data {
   z : i32,
 }
@@ -3529,7 +3505,7 @@ To prevent \compiletime{} errors for potential \cringe{} dereferencing our type 
 
 \begin{example}[Checking \cringe{}]
   Consider some \texttt{Map} class that represents a key-value map.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Map {
     private Object! key;
     private Object! val;
@@ -3549,7 +3525,7 @@ class Map {
 \end{lstlisting}
   \texttt{get} is not \cringe{}-safe because \texttt{this.next} could be \cringe{}.
   So we need to first check whether it is \cringe{} before we use it as a \receiver{}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 public Object? get (Object! key) {
     if (this.key == key) return this.value;
     if (this.next == null) return null;
@@ -3559,7 +3535,7 @@ public Object? get (Object! key) {
   This seems like a reasonable solution, and in a sequential setting it could be.
   However interleavings are possible that allow some other thread to set \texttt{this.next} to \cringe{} before \texttt{this.next.get(key)} is invoked.
   Thus we need to assign to a local variable first.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 public Object? get (Object! key) {
     if (this.key == key) return this.value;
     Map? nextUp = this.next;
@@ -3600,7 +3576,7 @@ Especially because subobjects will implicitly or explicitly invoke the superobje
 
 \begin{example}[Dynamically-bound problems.]
   Consider the didactically named class \texttt{Demo}.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Demo {
     private Vector! cache;
 
@@ -3660,7 +3636,7 @@ class Demo implements Observer {
 
   No dynamically-bound calls occur within \texttt{Demo}'s constructor.
   The \texttt{Subject} class looks like:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Subject {
     void register (Observer! o) {
         ...
@@ -3670,7 +3646,7 @@ class Subject {
 }
 \end{lstlisting}
   However again we may write a subclass that causes problems:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class SubDemo extends Demo {
      private Vector! data;
 
@@ -3700,7 +3676,7 @@ class SubDemo extends Demo {
 \begin{example}[Concurrency woes]
   So maybe the constructor doesn't even indirectly call one of its own \dynamic{}ally bound methods.
   Concurrent execution still has something to say.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Demo implements Observer {
     static Subject! subject;
 
@@ -3756,7 +3732,7 @@ class Subject extends Thread {
   I give up.
   I will not make \textit{any} method calls during a constructor at all.
   Here's an \textit{innocent} class with a cycle of processes.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Cycle {
     Cycle! next;
     Process! proc;
@@ -3774,7 +3750,7 @@ class Cycle {
 }
 \end{lstlisting}
   Imagine we have some scheduler that goes through a cycle.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Scheduler extends Thread {
     Cycle! current;
 
@@ -3793,7 +3769,7 @@ class Scheduler extends Thread {
 }
 \end{lstlisting}
   Say we have some client code that creates process cycle for a scheduler, runs the scheduler, then decides to add another process to the cycle.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 Process! eat   = new Process(...);
 Process! poop  = new Process(...);
 Process! sleep = new Process(...);
@@ -4086,7 +4062,7 @@ Free and unclassified arguments to nested new must have come from within the sur
 
 \begin{example}[Declared vs actual types]
   Formal construction type of parameter doesn't matter as much as static type of argument.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 public C {
     public C (unc String c) {...}
 }
@@ -4105,7 +4081,7 @@ C x = new C(s); // ok, will know s is committed
   If a field is \cringe{} the method is responsible for initializing it.
   This is a design choice, not a language construct.
   Consider we define a class aptly named \texttt{Demo} in typical fashion.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Demo {
     private Vector! data;
 
@@ -4119,7 +4095,7 @@ class Demo {
 }
 \end{lstlisting}
   However if we choose to do lazy initialization our \texttt{Demo} will look more like:
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 class Demo {
     private Vector? data;
 
@@ -4148,7 +4124,7 @@ class Demo {
     \texttt{String![]! arr = \{``Hey'', ``Baby''\}}
   \item Have language support for putting default values into the array (Eiffel).
   \item Use a \runtimecheck{} at the end of the constructor.
-\begin{lstlisting}[language=Java]
+\begin{lstlisting}[escapechar=|, language=Java]
 free String![]! arr = new String![arrLength];
 for (int i; i < arrLength; i++) {
      arr[i] = i % 2 ? "Even" : "Odd";
