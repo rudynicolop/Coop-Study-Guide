@@ -762,7 +762,7 @@ class DecCounter {
 }
 \end{lstlisting}
   Note that the history constraint is defined in terms of some function \texttt{used}.
-  This is okay as long as \texttt{used} is \textit{pure}.
+  This is okay as long as \texttt{used} \textit{does not produce side effects}.
   Also note that we have \old{} wrapped around the result of a function without any fields.
   \old{used(z)} means any previous value \texttt{used} gave for $z$.
   The history constraint means that any int was used in the past, it is still used.
