@@ -16,6 +16,4 @@ The material in this study guide was taken from the [course lecture slides by Pe
 
 ## TODOs
 
-- Better rust and lifetime examples
-
 - Revisit how new initialization rules prevent problems

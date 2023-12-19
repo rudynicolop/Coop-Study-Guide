@@ -3389,6 +3389,65 @@ However capturing is safe because the capturing data structure owns the captured
   In safe Rust it is not possible to construct cyclic data structures.
 \end{remark}
 
+\begin{example}[Moving and Borrowing Rust]
+  Here's an example of what ownership does and doesn't allow you to do in Rust.
+\begin{lstlisting}[language=Rust]
+struct Data {
+  z : i32,
+}
+
+impl Data {
+  fn new(z : i32) -> Self {
+    Data { z }
+  }
+  
+  fn read(&self) -> i32 {
+      self.z
+  }
+  
+  fn write(&mut self, z : i32) {
+      self.z = z;
+  }
+  
+  fn absorb(self) {}
+}
+
+fn main() {
+    let d1 = Data::new(0);
+  
+    println!("{}", d1.read());
+    // error[E0596]: cannot borrow `d1` as mutable, as it is not declared as mutable
+    // d1.write(2);
+  
+    let mut d2 = &d1;
+    println!("{}", d2.read());
+    // error[E0596]: cannot borrow `*d2` as mutable, as it is behind a `&` reference
+    // d2.write(2);
+    d2 = &Data::new(55);
+    // error[E0716]: temporary value dropped while borrowed
+    // d2.read();
+    // d2.write(25);
+    
+    // error[E0596]: cannot borrow `d1` as mutable, as it is not declared as mutable
+    // let mut d3 = &mut d1;
+  
+    d1.absorb();
+    // error[E0382]: borrow of moved value: `d1`
+    // println!("{}", d1.read());
+    
+    let mut d4 = Data::new(0);
+    d4.write(42);
+    
+    let mut d5 = &mut d4;
+    d5.write(32);
+    d4.write(20);
+    // error[E0499]: cannot borrow `d4` as mutable more than once at a time
+    // d5.write(66);
+}
+\end{lstlisting}
+  You can test these examples in \href{https://cognitive-engineering-lab.github.io/aquascope/}{aquascope} to see how the ownership and borrowing rules are enforced.
+\end{example}
+
 \subsection{Read-only References}
 
 In stateful programming aliases require much less memory overhead than deep-copying data structures.
