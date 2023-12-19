@@ -1345,7 +1345,7 @@ By default C++ has \textit{non-virtual} inheritance, where two copies of each $T
 
 In C++ one may also inherit \textit{virtually}, where only one copy of $Top$ exists in memory and its constructor is just called once.
 In this case, the smallest subclass $S$ must call the constructor for $Top$ directly.
-If there is a constructor for $Top$ without arguments, this will be called first by default. Constructors should not realy upon the virutal superclass constructors they call to maintain invariants.
+If there is a constructor for $Top$ without arguments, this will be called first by default. Constructors should not rely upon the virutal superclass constructors they call to maintain invariants.
 
 \begin{example}[Multiple inheritance in C++]
   Consider the following C++ code that implements an email folder.
