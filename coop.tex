@@ -4084,11 +4084,11 @@ C x = new C(s); // ok, will know s is committed
 
 public class Dog {
     Person! owner; // Dogs must have an owner
-    Bone! bone; // Dogs must have a bone
+    Bone! bone;    // Dogs must have a bone
     String! breed; // Dogs must have a breed
     public Dog(Person owner, String breed) {
         this.owner = owner;
-        this.bone = new Bone(this);
+        this.bone  = new Bone(this);
         this.breed = breed;
     }
 }
@@ -4117,17 +4117,17 @@ public class Bone {
 
 public class Dog {
     Person! owner; // Dogs must have an owner
-    Bone! bone; // Dogs must have a bone
+    Bone! bone;    // Dogs must have a bone
     String! breed; // Dogs must have a breed
     public Dog(unc Person! owner, unc String! breed) {
         this.owner = owner;
-        this.bone = new Bone(this); |\label{line:bonethis}|
+        this.bone  = new Bone(this); |\label{line:bonethis}|
         this.breed = breed;
     }
 
     public Dog() {
         this.owner = new Person();
-        this.bone = new Bone(this);
+        this.bone  = new Bone(this);
         this.breed = "Mutt";
     }
 }
@@ -4163,18 +4163,18 @@ public class Bone {
     Person(Person toClone) {
         Dog? d = toClone.dog;
         if(d!=null) {
-            this.dog = new Dog(d, this);
+            this.dog = new Dog(d, this); |\label{line:dogisnewdog}|
         }
     }
 
     public Person clone() {
-        return new Person(this);
+        return new Person(this);         
     }
 }
 
 public class Dog {
     Person! owner; // Dogs must have an owner
-    Bone! bone; // Dogs must have a bone
+    Bone! bone;    // Dogs must have a bone
     String! breed; // Dogs must have a breed
     public Dog(unc Person! owner, unc String! breed) {
         this.owner = owner;
@@ -4184,14 +4184,14 @@ public class Dog {
 
     public Dog() {
         this.owner = new Person();
-        this.bone = new Bone(this);
+        this.bone  = new Bone(this);
         this.breed = "Mutt";
     }
 
     Dog(Dog toClone, Person newOwner) {
         this.owner = newOwner;
         this.breed = toClone.breed;
-        this.bone = new Bone(this);
+        this.bone  = new Bone(this);
     }
 
     public Dog clone(Person toOwn) {
@@ -4215,6 +4215,77 @@ public class Bone {
 }
 \end{lstlisting}
   What construction type annotations should we add to our new methods and constructors?
+  We need to guarantee that all of these functions ensure transitive initialization.
+  In particular we need to consider that:
+  \begin{itemize}
+  \item \texttt{Person.clone}, \texttt{Dog.clone}, and \texttt{Bone.clone} need to return a committed reference.
+  \item \texttt{Bone.clone} doesn't use \texttt{this}.
+  \item On line~\ref{line:dogisnewdog} the new constructor for \texttt{Dog} is called in the new constructor for \texttt{Person}.
+  \end{itemize}
+  Thus we may annotate the code as follows.
+\begin{lstlisting}[language=Java, escapechar=|, numbers=left]
+ public class Person {
+    Dog? dog; // people might have a dog
+    public Person() { }
+
+    Person(Person! toClone) {
+        Dog? d = toClone.dog;
+        if(d!=null) {
+            this.dog = new Dog(d, this); |\label{line:dogisnewdog1}|
+        }
+    }
+
+    public Person clone() {
+        return new Person(this);         
+    }
+}
+
+public class Dog {
+    Person! owner; // Dogs must have an owner
+    Bone! bone;    // Dogs must have a bone
+    String! breed; // Dogs must have a breed
+    public Dog(unc Person! owner, unc String! breed) {
+        this.owner = owner;
+        this.bone = new Bone(this);
+        this.breed = breed;
+    }
+
+    public Dog() {
+        this.owner = new Person();
+        this.bone  = new Bone(this);
+        this.breed = "Mutt";
+    }
+
+    Dog(Dog! toClone, unc Person! newOwner) {
+        this.owner = newOwner;
+        this.breed = toClone.breed;
+        this.bone  = new Bone(this);
+    }
+
+    public Dog clone(Person toOwn) {
+        return new Dog(this, toOwn);
+    }
+}
+
+public class Bone {
+    Dog! dog; // Bones must belong to a dog
+    public Bone(unc Dog! toOwn) {
+        this.dog = toOwn;
+    }
+
+    public Bone() {
+        this.dog = new Dog();
+    }
+
+    public Bone clone(Dog! toOwn) {
+        return new Bone(toOwn);
+    }
+}
+\end{lstlisting}
+  We force all of the ``clone'' methods to only accept committed references because otherwise the constructors they call could not ensure transitive initialization.
+  We allow the \texttt{newOwner} parameter for the new \texttt{Dog} constructor to be unclassified because it is called on line~\ref{line:dogisnewdog1} where the argument is free.
+  In general we need committed references when we want to ensure that field reads are \textit{non-\cringe{}}.
+  When we know that a field read is non-\cringe{} and committed then it helps when they are used to write fields of \texttt{this} to ensure the definite-assignment check for constructor declarations.
 \end{example}
 
 \begin{definition}[Lazy Initialization]

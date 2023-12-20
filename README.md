@@ -16,4 +16,4 @@ The material in this study guide was taken from the [course lecture slides by Pe
 
 ## TODOs
 
-- Revisit how new initialization rules prevent problems
+- I think done...
