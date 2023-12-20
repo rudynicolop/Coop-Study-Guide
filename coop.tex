@@ -3472,7 +3472,7 @@ In other words:
 Algebraic data types give you more expressiveness and safety.
 But some \textit{certain} languages (\textit{cough, cough} Java, C, C++, etc.) thought \cringe{} would be simpler to implement and program with.
 
-Unfortunately will not be getting rid of \cringe{} all together.
+Unfortunately we will not be getting rid of \cringe{} all together.
 Instead we will distinguish between \cringe{} types and \textit{non-\cringe{}} types.
 $\nonnull{T}$ denotes references to $T$ objects.
 $\nulltyp{T}$ denotes references to $T$ objects \textit{or} \cringe{}.
@@ -3990,7 +3990,7 @@ Local initialization is a \textit{partial} property.
 \end{definition}
 
 \begin{definition}[Typing constructor declarations]
-  When we type the body of a constructor, we assume that \texttt{this} has a free, non-\cringe type.
+  When we type the body of a constructor, we assume that \texttt{this} has a free, non-\cringe{} type.
   By the end non-\cringe{} values must be assigned to non-\cringe{} fields.
   That is the constructor must have the explicit syntax \texttt{this.field = <not null>} for each field of a non-\cringe{} type.
   This is called \textit{the definite assignment check}.
@@ -4072,6 +4072,149 @@ We may do the following since committed types are subtypes of unclassified types
 String s = "Hello";
 C x = new C(s); // ok, will know s is committed
 \end{lstlisting}
+\end{example}
+
+\begin{example}[Initializing Circular Data Structures]
+  Consider the following Java code for an \texttt{Owner}, \texttt{Dog}, and \texttt{Bone}.
+\begin{lstlisting}[language=Java, escapechar=|, numbers=left]
+ public class Person {
+    Dog? dog; // people might have a dog
+    public Person() { }
+}
+
+public class Dog {
+    Person! owner; // Dogs must have an owner
+    Bone! bone; // Dogs must have a bone
+    String! breed; // Dogs must have a breed
+    public Dog(Person owner, String breed) {
+        this.owner = owner;
+        this.bone = new Bone(this);
+        this.breed = breed;
+    }
+}
+
+public class Bone {
+    Dog! dog; // Bones must belong to a dog
+    public Bone(Dog toOwn) {
+        this.dog = toOwn;
+    }
+}
+\end{lstlisting}
+  In the above there a circularity: a \texttt{Dog} $d$'s \texttt{Bone} has a reference to $d$.
+  We would like to correctly annotate this code with construction types.
+  We need to consider that:
+  \begin{itemize}
+  \item \texttt{this} is free in the constructors.
+  \item The constructors for \texttt{Dog} and \texttt{Bone} may be called within or outside of a constructor.
+  \item All fields must be \textit{transitively initialized}~{definition:transinit} by the end of the surface level constructor.
+  \end{itemize}
+  With these considerations in mind let us annotate the code with the following.
+\begin{lstlisting}[language=Java, escapechar=|, numbers=left]
+ public class Person {
+    Dog? dog; // people might have a dog
+    public Person() { }
+}
+
+public class Dog {
+    Person! owner; // Dogs must have an owner
+    Bone! bone; // Dogs must have a bone
+    String! breed; // Dogs must have a breed
+    public Dog(unc Person! owner, unc String! breed) {
+        this.owner = owner;
+        this.bone = new Bone(this); |\label{line:bonethis}|
+        this.breed = breed;
+    }
+
+    public Dog() {
+        this.owner = new Person();
+        this.bone = new Bone(this);
+        this.breed = "Mutt";
+    }
+}
+
+public class Bone {
+    Dog! dog; // Bones must belong to a dog
+    public Bone(unc Dog! toOwn) {
+        this.dog = toOwn;
+    }
+
+    public Bone() {
+        this.dog = new Dog();
+    }
+}
+\end{lstlisting}
+  We choose to allow \texttt{Bone}'s constructor to accept a \texttt{unc Dog!} because:
+  \begin{itemize}
+  \item We need the \texttt{Dog} to be non-\cringe{} to ensure that \texttt{Bone} gets locally initialized~\ref{definition:localinit}.
+  \item Passing a committed \texttt{Dog} should be allowed.
+  \item In \texttt{Dog}'s constructor on line~\ref{line:bonethis} \texttt{this} which is free is passed into \texttt{Bone}'s constructor.
+  \end{itemize}
+  We allow \texttt{Dog}'s constructor's arguments to be unclassified for the same reasons.
+  We could restrict \texttt{Dog}'s constructor's arguments to be committed and this would be sound, but we do not need limit it.
+  Generally it is not a problem for constructors to allow unclassified parameters.
+  However this may be problematic for methods, particularly for overriding methods that may need to accept unclassified arguments.
+  As shown we can include constructors without parameters for \texttt{Dog} and \texttt{Bone} and still ensure transitive initialization.
+  Consider if we extend the constructors of our classes as the following:
+\begin{lstlisting}[language=Java, escapechar=|, numbers=left]
+ public class Person {
+    Dog? dog; // people might have a dog
+    public Person() { }
+
+    Person(Person toClone) {
+        Dog? d = toClone.dog;
+        if(d!=null) {
+            this.dog = new Dog(d, this);
+        }
+    }
+
+    public Person clone() {
+        return new Person(this);
+    }
+}
+
+public class Dog {
+    Person! owner; // Dogs must have an owner
+    Bone! bone; // Dogs must have a bone
+    String! breed; // Dogs must have a breed
+    public Dog(unc Person! owner, unc String! breed) {
+        this.owner = owner;
+        this.bone = new Bone(this);
+        this.breed = breed;
+    }
+
+    public Dog() {
+        this.owner = new Person();
+        this.bone = new Bone(this);
+        this.breed = "Mutt";
+    }
+
+    Dog(Dog toClone, Person newOwner) {
+        this.owner = newOwner;
+        this.breed = toClone.breed;
+        this.bone = new Bone(this);
+    }
+
+    public Dog clone(Person toOwn) {
+        return new Dog(this, toOwn);
+    }
+}
+
+public class Bone {
+    Dog! dog; // Bones must belong to a dog
+    public Bone(unc Dog! toOwn) {
+        this.dog = toOwn;
+    }
+
+    public Bone() {
+        this.dog = new Dog();
+    }
+
+    public Bone clone(Dog toOwn) {
+        return new Bone(toOwn);
+    }
+}
+\end{lstlisting}
+  What construction type annotations should we add to our new methods and constructors?
 \end{example}
 
 \begin{definition}[Lazy Initialization]
